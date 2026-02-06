@@ -1,0 +1,12 @@
+.git
+.gitignore
+.idea
+.nitro
+node_modules
+.output
+coverage
+dist
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
