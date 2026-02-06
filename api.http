@@ -22,36 +22,12 @@ Content-Type: application/json
 
 "not-an-object"
 
-### PUT settings (invalid interval)
-PUT {{base}}/settings
-Content-Type: application/json
 
-{
-  "intervalHours": 0,
-  "shuffle": false
-}
-
-### POST upload (valid portrait)
+### POST upload image
 POST {{base}}/upload?filename=test_P.jpg
 Content-Type: application/octet-stream
 
-< ./data/images/test.jpeg
-
-### POST upload (invalid extension)
-POST {{base}}/upload?filename=test_P.png
-Content-Type: application/octet-stream
-
-< ./data/images/test.jpeg
-
-### POST upload (invalid filename traversal)
-POST {{base}}/upload?filename=../test_P.jpg
-Content-Type: application/octet-stream
-
-< ./data/images/test.jpeg
-
-### POST upload (empty body)
-POST {{base}}/upload?filename=test_P.jpg
-Content-Type: application/octet-stream
+< ./tests/data/test.jpeg
 
 
 ### GET image
