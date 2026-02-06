@@ -1,0 +1,61 @@
+### Base
+@base = http://192.168.0.164:3000
+
+### GET eink pull (empty or photo)
+GET {{base}}/eink_pull
+
+### GET settings
+GET {{base}}/settings
+
+### PUT settings (valid)
+PUT {{base}}/settings
+Content-Type: application/json
+
+{
+  "intervalHours": 2,
+  "shuffle": true
+}
+
+### PUT settings (invalid body)
+PUT {{base}}/settings
+Content-Type: application/json
+
+"not-an-object"
+
+### PUT settings (invalid interval)
+PUT {{base}}/settings
+Content-Type: application/json
+
+{
+  "intervalHours": 0,
+  "shuffle": false
+}
+
+### POST upload (valid portrait)
+POST {{base}}/upload?filename=test_P.jpg
+Content-Type: application/octet-stream
+
+< ./data/images/test.jpeg
+
+### POST upload (invalid extension)
+POST {{base}}/upload?filename=test_P.png
+Content-Type: application/octet-stream
+
+< ./data/images/test.jpeg
+
+### POST upload (invalid filename traversal)
+POST {{base}}/upload?filename=../test_P.jpg
+Content-Type: application/octet-stream
+
+< ./data/images/test.jpeg
+
+### POST upload (empty body)
+POST {{base}}/upload?filename=test_P.jpg
+Content-Type: application/octet-stream
+
+
+### GET image
+GET {{base}}/images/test_P.jpg
+
+###
+GET http://192.168.0.174/upstream/pull_settings

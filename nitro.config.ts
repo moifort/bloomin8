@@ -1,8 +1,11 @@
-import { defineNitroConfig } from "nitropack/config"
-
-// https://nitro.build/config
 export default defineNitroConfig({
-  compatibilityDate: "latest",
-  srcDir: "server",
-  imports: false
-});
+  compatibilityDate: '2026-02-06',
+  srcDir: 'server',
+  routeRules: {
+    '/images/**': {
+      headers: {
+        'cache-control': 'public, max-age=31536000, immutable',
+      },
+    },
+  },
+})
