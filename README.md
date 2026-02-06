@@ -25,12 +25,13 @@ DATA_DIR=/var/lib/bloomin8
 ## Endpoints
 
 - `GET /eink_pull` — called by the device.
-- `POST /upload?filename=photo_P.jpg` — raw JPEG body.
+- `POST /upload?orientation=P` — raw JPEG body.
 - `GET /images/:filename` — serve stored JPEG.
 - `GET /settings`
 - `PUT /settings`
 
 ## Notes
 
-- Filenames must end with `_P.jpg` or `_L.jpg`.
+- Upload filenames are generated server-side with a random name.
+- Use `orientation=P` or `orientation=L` on upload.
 - JPEG only.

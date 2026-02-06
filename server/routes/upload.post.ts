@@ -2,11 +2,11 @@ import { uploadPhoto } from '../application/upload'
 
 export default eventHandler(async (event) => {
   const query = getQuery(event)
-  const rawName = typeof query.filename === 'string' ? query.filename : ''
+  const rawOrientation = typeof query.orientation === 'string' ? query.orientation : 'P'
   const body = await readRawBody(event, false)
   const bytes = body instanceof Uint8Array ? body : null
   const result = await uploadPhoto({
-    filename: rawName,
+    orientation: rawOrientation,
     body: bytes,
   })
 

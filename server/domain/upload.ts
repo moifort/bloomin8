@@ -1,47 +1,32 @@
+import { randomBytes } from 'node:crypto'
 import type { Orientation } from './model'
 import { err, ok, type Result } from './result'
 
-export type UploadFilenameError =
-  | { type: 'invalid_filename'; message: string }
-  | { type: 'invalid_extension'; message: string }
-  | { type: 'invalid_orientation'; message: string }
+export type UploadOrientationError = { type: 'invalid_orientation'; message: string }
 
-export type ParsedUploadFilename = {
+export type GeneratedUploadName = {
   fileName: string
   orientation: Orientation
 }
 
-const hasUnsafePath = (value: string): boolean =>
-  value.includes('/') || value.includes('\\') || value.includes('\0')
-
-export const parseUploadFilename = (
+export const parseUploadOrientation = (
   raw: string,
-): Result<ParsedUploadFilename, UploadFilenameError> => {
-  if (!raw || hasUnsafePath(raw)) {
-    return err({ type: 'invalid_filename', message: 'Invalid filename' })
+): Result<Orientation, UploadOrientationError> => {
+  const normalized = raw.trim().toUpperCase()
+  if (normalized === 'P' || normalized === 'L') {
+    return ok(normalized)
   }
 
-  const hasJpegExtension = raw.endsWith('.jpg') || raw.endsWith('.jpeg')
-  if (!hasJpegExtension) {
-    return err({
-      type: 'invalid_extension',
-      message: 'Only .jpg/.jpeg allowed',
-    })
+  return err({
+    type: 'invalid_orientation',
+    message: 'Orientation must be P or L',
+  })
+}
+
+export const buildUploadFileName = (orientation: Orientation): GeneratedUploadName => {
+  const randomName = randomBytes(12).toString('hex')
+  return {
+    fileName: `${randomName}_${orientation}.jpg`,
+    orientation,
   }
-
-  const orientation =
-    raw.endsWith('_P.jpg') || raw.endsWith('_P.jpeg')
-      ? 'P'
-      : raw.endsWith('_L.jpg') || raw.endsWith('_L.jpeg')
-        ? 'L'
-        : null
-
-  if (!orientation) {
-    return err({
-      type: 'invalid_orientation',
-      message: 'Filename must end with _P.jpg or _L.jpg',
-    })
-  }
-
-  return ok({ fileName: raw, orientation })
 }

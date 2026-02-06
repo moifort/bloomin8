@@ -23,12 +23,12 @@ Content-Type: application/json
 }
 
 ### QUICK FLOW 1/4 - Upload image to upstream server
-POST {{upstream}}/upload?filename={{image}}
+POST {{upstream}}/upload?orientation=P
 Content-Type: application/octet-stream
 
 < ./tests/data/mi.jpeg
 
-### QUICK FLOW 2/4 - Verify image is directly reachable by the canvas
+### QUICK FLOW 2/4 - Verify image is directly reachable by the canvas (set @image from upload response)
 GET {{upstream}}/images/{{image}}
 Accept: image/jpeg
 
