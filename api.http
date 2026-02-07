@@ -28,6 +28,9 @@ Content-Type: application/octet-stream
 
 < ./tests/data/test.jpeg
 
+### DELETE all photos
+DELETE {{base}}/photos
+
 ### QUICK FLOW 1/3 - Verify uploaded image URL (set @image from upload response)
 GET {{base}}/images/{{image}}
 Accept: image/jpeg

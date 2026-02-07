@@ -26,6 +26,7 @@ DATA_DIR=/var/lib/bloomin8
 
 - `GET /eink_pull` — called by the device.
 - `POST /upload?orientation=P` — raw JPEG body.
+- `DELETE /photos` — delete all stored photos.
 - `GET /images/:filename` — serve stored JPEG.
 - `GET /settings`
 - `PUT /settings`

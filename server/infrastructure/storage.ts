@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import {
   createDefaultSettings,
@@ -80,4 +80,14 @@ export const writeImageFile = async (fileName: string, contents: Uint8Array): Pr
 export const readImageFile = async (fileName: string): Promise<Buffer> => {
   const targetPath = join(imagesDir, fileName)
   return readFile(targetPath)
+}
+
+export const clearImageFiles = async (): Promise<number> => {
+  await ensureDataDirs()
+  const entries = await readdir(imagesDir, { withFileTypes: true })
+  const files = entries.filter((entry) => entry.isFile()).map((entry) => entry.name)
+
+  await Promise.all(files.map((file) => unlink(join(imagesDir, file))))
+
+  return files.length
 }

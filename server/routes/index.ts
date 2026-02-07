@@ -4,6 +4,7 @@ export default eventHandler(() => ({
   endpoints: [
     'GET /eink_pull',
     'POST /upload?orientation=P',
+    'DELETE /photos',
     'GET /images/:filename',
     'GET /settings',
     'PUT /settings',
