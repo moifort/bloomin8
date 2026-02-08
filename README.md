@@ -25,11 +25,13 @@ DATA_DIR=/var/lib/bloomin8
 ## Endpoints
 
 - `GET /eink_pull` — called by the device.
+- `GET /eink_call` — alias of `eink_pull` (requested call name).
 - `POST /upload?orientation=P` — raw JPEG body.
 - `DELETE /photos` — delete all stored photos.
 - `GET /images/:filename` — serve stored JPEG.
 - `GET /settings`
 - `PUT /settings`
+- `POST /workflow/start` — push immediate then normal cron to canvas.
 
 ## Notes
 
@@ -58,6 +60,7 @@ The app listens on port `3000` and stores persistent files in `./data` mapped to
 
 - `GET http://<your-casaos-ip>:3000/settings`
 - `GET http://<your-casaos-ip>:3000/eink_pull`
+- `POST http://<your-casaos-ip>:3000/workflow/start`
 
 ### 4) Optional: map data elsewhere
 
