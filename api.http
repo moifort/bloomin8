@@ -1,20 +1,8 @@
 ### Base
 @base = http://192.168.0.164:3000
 @canvas = http://192.168.0.174
-@image = 179c50da-781b-4b9e-b998-d783bfcb925a
+@image = f739130d-8629-4fb0-8b56-b9ab5726b6be
 
-### GET settings
-GET {{base}}/settings
-
-### PUT settings
-PUT {{base}}/settings
-Content-Type: application/json
-
-{
-  "intervalHours": 3,
-  "shuffle": true,
-  "upstreamUrl": "{{base}}"
-}
 
 ### POST upload image
 POST {{base}}/upload?orientation=P
