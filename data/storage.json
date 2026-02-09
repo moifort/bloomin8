@@ -1,4 +1,8 @@
 {
+  "intervalHours": 3,
+  "cursor": 0,
+  "status": "in-progress",
+  "upstreamUrl": "http://192.168.0.164:3000",
   "photos": [
     {
       "file": "501c8d0d753f860ec6b507a4_P.jpg",

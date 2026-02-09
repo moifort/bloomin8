@@ -1,8 +1,0 @@
-{
-  "intervalHours": 3,
-  "shuffle": true,
-  "cursor": 0,
-  "status": "idle",
-  "upstreamUrl": "http://192.168.0.164:3000",
-  "token": "my-secret-token"
-}

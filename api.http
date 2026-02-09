@@ -1,62 +1,45 @@
 ### Base
 @base = http://192.168.0.164:3000
 @canvas = http://192.168.0.174
-@image = 0af14d4b8ec69d21d71f4113_P.jpg
-
-### GET eink pull (empty or photo)
-GET {{base}}/eink_pull
-
-### GET image (display immediately)
-GET {{base}}/images/{{image}}
-Accept: image/jpeg
+@image = 501c8d0d753f860ec6b507a4_P.jpg
 
 ### GET settings
 GET {{base}}/settings
 
-### PUT settings (valid)
+### PUT settings
 PUT {{base}}/settings
 Content-Type: application/json
 
 {
   "intervalHours": 3,
-  "shuffle": true
+  "shuffle": true,
+  "upstreamUrl": "{{base}}"
 }
 
 ### POST upload image
 POST {{base}}/upload?orientation=P
 Content-Type: application/octet-stream
 
-< ./tests/data/test.jpeg
+< ./IMG_3187.jpg
 
-### DELETE all photos
-DELETE {{base}}/photos
-
-### QUICK FLOW 1/3 - Verify uploaded image URL (set @image from upload response)
+### GET image
 GET {{base}}/images/{{image}}
 Accept: image/jpeg
 
-### QUICK FLOW 2/3 - Check what the device would pull now
-GET {{base}}/eink_pull
+//***********************************************************//
+//************************** CANVAS *************************//
+//***********************************************************//
+### GET settings
+GET {{canvas}}/upstream/pull_settings
 
-### QUICK FLOW 3/3 - Trigger canvas pull at the next wake (set UTC time close to now)
-< {%
-  const cronTime = new Date(Date.now() + 60 * 1000)
-    .toISOString()
-    .replace(/\.\d{3}Z$/, "Z")
-  request.variables.set("cron_time", cronTime)
-%}
+### SET settings with direct call from canvas
+< {% request.variables.set("cron_time", new Date().toISOString().replace(/\.\d{3}Z$/, "Z")) %}
 PUT {{canvas}}/upstream/pull_settings
 Content-Type: application/json
 
 {
   "upstream_on": true,
   "upstream_url": "{{base}}",
-  "token": "my-secret-token",
   "cron_time": "{{cron_time}}"
 }
 
-### GET image
-GET {{base}}/images/{{image}}
-
-###
-GET {{canvas}}/upstream/pull_settings
