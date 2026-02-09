@@ -33,13 +33,14 @@ Accept: image/jpeg
 GET {{canvas}}/upstream/pull_settings
 
 ### SET settings with direct call from canvas
-< {% request.variables.set("cron_time", new Date().toISOString().replace(/\.\d{3}Z$/, "Z")) %}
+< {% request.variables.set("cron_time", new Date(Date.now()).toISOString().replace(/\.\d{3}Z$/, "Z")) %}
 PUT {{canvas}}/upstream/pull_settings
 Content-Type: application/json
 
 {
   "upstream_on": true,
   "upstream_url": "{{base}}",
+  "token": "",
   "cron_time": "{{cron_time}}"
 }
 
