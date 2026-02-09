@@ -1,7 +1,7 @@
 ### Base
 @base = http://192.168.0.164:3000
 @canvas = http://192.168.0.174
-@image = 501c8d0d753f860ec6b507a4_P.jpg
+@image = 179c50da-781b-4b9e-b998-d783bfcb925a
 
 ### GET settings
 GET {{base}}/settings

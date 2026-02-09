@@ -11,7 +11,6 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "types": ["nitropack", "bun-types"],
-    "lib": ["ESNext", "DOM"],
-    "baseUrl": "."
+    "lib": ["ESNext", "DOM"]
   }
 }

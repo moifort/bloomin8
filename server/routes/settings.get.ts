@@ -1,3 +1,3 @@
 export default eventHandler(async () => {
-  return { status: 200, data: settings }
+  return { status: 200, data: null }
 })
