@@ -13,8 +13,6 @@ ENV HOST=0.0.0.0
 ENV PORT=3000
 ENV DATA_DIR=/data
 
-COPY --from=build /app/.output ./.output
-
 EXPOSE 3000
 
 CMD ["bun", "run", ".output/server/index.mjs"]
