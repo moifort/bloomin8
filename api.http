@@ -1,7 +1,8 @@
 ### Base
-@base = http://192.168.0.164:3000
+#@base = http://192.168.0.164:3000
+@base = http://192.168.0.165:3000
 @canvas = http://192.168.0.174
-@image = eda04235-64de-4f6e-9217-927cdfcb766c_P.jpg
+@image = 3ec638c4-f069-41f4-9393-39cc60bca705_P.jpg
 
 ### START
 GET {{base}}/playlist/start
@@ -12,7 +13,7 @@ GET {{base}}/playlist/start
 POST {{base}}/upload?orientation=P
 Content-Type: application/octet-stream
 
-< ./IMG_3231.jpg
+< ./images/IMG_3187.jpeg
 
 ### GET image
 GET {{base}}/images/{{image}}

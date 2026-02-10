@@ -23,8 +23,6 @@ export namespace Playlist {
   }
 
   export const nextImage = async (
-    canvasUrl: CanvasUrl,
-    serverUrl: ServerUrl,
     cronIntervalInHours: Hour,
     playlistId = PlaylistId('8d0fc632-378b-4fac-903c-96b4feb7d1c4'),
   ) => {
