@@ -1,11 +1,13 @@
+import { Canvas } from '~/canvas/index'
+import { config } from '~/config/index'
+import { Playlist } from '~/playlist/index'
+
 export default eventHandler(async () => {
-  return {
-    status: 200,
-    type: 'SHOW',
-    message: 'Image retrieved successfully',
-    data: {
-      next_cron_time: '2025-11-01T09:00:00Z',
-      image_url: 'https://your-upstream.com/images/photo_P.jpg',
-    },
-  }
+  const { cronIntervalInHours, canvasUrl, serverUrl } = config()
+  const nextImage = await Playlist.nextImage(canvasUrl, serverUrl, cronIntervalInHours)
+  if (nextImage === 'playlist-not-found') return Canvas.stopPulling()
+  if (nextImage === 'playlist-stopped') return Canvas.stopPulling()
+  if (nextImage === 'playlist-empty') return Canvas.stopPulling()
+  if (nextImage === 'image-not-found') return Canvas.imageNotFound()
+  return Canvas.getNextImage(serverUrl, nextImage.nextImage.url, nextImage.displayedAt)
 })

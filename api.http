@@ -3,12 +3,16 @@
 @canvas = http://192.168.0.174
 @image = eda04235-64de-4f6e-9217-927cdfcb766c_P.jpg
 
+### START
+GET {{base}}/playlist/start
 
+
+//************************ Images ***************************//
 ### POST upload image
 POST {{base}}/upload?orientation=P
 Content-Type: application/octet-stream
 
-< ./IMG_3187.jpg
+< ./IMG_3231.jpg
 
 ### GET image
 GET {{base}}/images/{{image}}
@@ -28,7 +32,6 @@ Content-Type: application/json
 {
   "upstream_on": true,
   "upstream_url": "{{base}}",
-  "token": "",
-  "cron_time": "{{cron_time}}"
+  "cron_time": null
 }
 

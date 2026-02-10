@@ -15,5 +15,8 @@
     "nitropack": "2.12.4",
     "ts-brand": "0.2.0",
     "typescript": "5.5.4"
+  },
+  "dependencies": {
+    "ts-pattern": "5.9.0"
   }
 }
