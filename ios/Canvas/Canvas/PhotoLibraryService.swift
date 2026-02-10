@@ -3,6 +3,13 @@ import Photos
 import UIKit
 
 enum PhotoLibraryService {
+    private static func uploadFetchTargetSize(for asset: PHAsset) -> CGSize {
+        let isLandscape = asset.pixelWidth > asset.pixelHeight
+        return isLandscape
+            ? CGSize(width: 1600, height: 1200)
+            : CGSize(width: 1200, height: 1600)
+    }
+
     enum FetchImageError: LocalizedError {
         case cancelled
         case invalidData
@@ -86,32 +93,48 @@ enum PhotoLibraryService {
         try await withCheckedThrowingContinuation { continuation in
             let options = PHImageRequestOptions()
             options.deliveryMode = .highQualityFormat
-            options.resizeMode = .none
+            options.resizeMode = .exact
             options.version = .current
             options.isNetworkAccessAllowed = true
             options.isSynchronous = false
 
-            PHImageManager.default().requestImageDataAndOrientation(for: asset, options: options) {
-                data,
-                _,
-                _,
-                info in
+            let lock = NSLock()
+            var hasResumed = false
+            let resumeOnce: (Result<UIImage, Error>) -> Void = { result in
+                lock.lock()
+                defer { lock.unlock() }
+                guard !hasResumed else { return }
+                hasResumed = true
+                continuation.resume(with: result)
+            }
+
+            PHImageManager.default().requestImage(
+                for: asset,
+                targetSize: uploadFetchTargetSize(for: asset),
+                contentMode: .aspectFit,
+                options: options
+            ) { image, info in
                 if let cancelled = info?[PHImageCancelledKey] as? Bool, cancelled {
-                    continuation.resume(throwing: FetchImageError.cancelled)
+                    resumeOnce(.failure(FetchImageError.cancelled))
                     return
                 }
 
                 if let error = info?[PHImageErrorKey] as? Error {
-                    continuation.resume(throwing: FetchImageError.underlying(error))
+                    resumeOnce(.failure(FetchImageError.underlying(error)))
                     return
                 }
 
-                guard let data, let image = UIImage(data: data) else {
-                    continuation.resume(throwing: FetchImageError.invalidData)
+                let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+                if isDegraded {
                     return
                 }
 
-                continuation.resume(returning: image)
+                guard let image else {
+                    resumeOnce(.failure(FetchImageError.invalidData))
+                    return
+                }
+
+                resumeOnce(.success(image))
             }
         }
     }

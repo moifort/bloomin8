@@ -16,6 +16,8 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var statusText: String = ""
     @Published private(set) var errorText: String?
 
+    private let maxConcurrentUploads = 2
+
     private var uploadTask: Task<Void, Never>?
     private var playlistStartTask: Task<Void, Never>?
     private var deletePhotosTask: Task<Void, Never>?
@@ -143,32 +145,86 @@ final class AppViewModel: ObservableObject {
         let uploader = UploadService(baseURL: baseURL)
         progress = UploadProgress(total: assets.count, processed: 0, uploaded: 0, failed: 0)
 
-        for asset in assets {
-            if Task.isCancelled {
-                statusText = "Upload annule."
-                return
+        let concurrencyLimit = min(maxConcurrentUploads, assets.count)
+        var nextAssetIndex = 0
+
+        await withTaskGroup(of: UploadItemResult.self) { group in
+            while nextAssetIndex < concurrencyLimit {
+                let asset = assets[nextAssetIndex]
+                nextAssetIndex += 1
+                group.addTask {
+                    await AppViewModel.uploadAsset(asset, uploader: uploader)
+                }
             }
 
-            do {
-                let sourceImage = try await PhotoLibraryService.requestUIImage(for: asset)
-                guard let processedImage = ImageProcessor.processForUpload(sourceImage) else {
-                    throw AppError.resizeFailed
+            while let itemResult = await group.next() {
+                if Task.isCancelled {
+                    group.cancelAll()
+                    statusText = "Upload annule."
+                    return
                 }
 
-                _ = try await uploader.uploadJPEG(
-                    processedImage.jpegData,
-                    orientation: processedImage.orientation.rawValue
-                )
-                progress.uploaded += 1
-            } catch {
-                progress.failed += 1
-            }
+                switch itemResult {
+                case .uploaded:
+                    progress.uploaded += 1
+                case .failed:
+                    progress.failed += 1
+                case .cancelled:
+                    break
+                }
 
-            progress.processed += 1
-            statusText = "Upload \(progress.processed)/\(progress.total)"
+                progress.processed += 1
+                statusText = "Upload \(progress.processed)/\(progress.total)"
+
+                if nextAssetIndex < assets.count {
+                    let asset = assets[nextAssetIndex]
+                    nextAssetIndex += 1
+                    group.addTask {
+                        await AppViewModel.uploadAsset(asset, uploader: uploader)
+                    }
+                }
+            }
+        }
+
+        if Task.isCancelled {
+            statusText = "Upload annule."
+            return
         }
 
         statusText = "Termine: \(progress.uploaded) envoyees, \(progress.failed) echecs."
+    }
+
+    private enum UploadItemResult {
+        case uploaded
+        case failed
+        case cancelled
+    }
+
+    private static func uploadAsset(_ asset: PHAsset, uploader: UploadService) async -> UploadItemResult {
+        if Task.isCancelled {
+            return .cancelled
+        }
+
+        do {
+            let sourceImage = try await PhotoLibraryService.requestUIImage(for: asset)
+            if Task.isCancelled {
+                return .cancelled
+            }
+
+            guard let processedImage = autoreleasepool(invoking: {
+                ImageProcessor.processForUpload(sourceImage)
+            }) else {
+                return .failed
+            }
+
+            _ = try await uploader.uploadJPEG(
+                processedImage.jpegData,
+                orientation: processedImage.orientation.rawValue
+            )
+            return .uploaded
+        } catch {
+            return Task.isCancelled ? .cancelled : .failed
+        }
     }
 
     private func runPlaylistStart(baseURL: URL) async {
