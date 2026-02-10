@@ -4,12 +4,9 @@ import type { ImageUrl } from '~/images/types'
 
 export namespace Canvas {
   export const wakeUp = async (canvasUrl: CanvasUrl, serverUrl: ServerUrl) =>
-    configure(canvasUrl, serverUrl, true)
+    configure(canvasUrl, serverUrl)
 
-  export const sleep = async (canvasUrl: CanvasUrl, serverUrl: ServerUrl) =>
-    configure(canvasUrl, serverUrl, false)
-
-  const configure = async (canvasUrl: CanvasUrl, serverUrl: ServerUrl, isActive: boolean) => {
+  const configure = async (canvasUrl: CanvasUrl, serverUrl: ServerUrl) => {
     const response = await fetch(`${canvasUrl}/upstream/pull_settings`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
@@ -17,7 +14,7 @@ export namespace Canvas {
         upstream_on: true,
         upstream_url: serverUrl,
         token: null,
-        cron_time: isActive ? CanvasDate(new Date()) : '0',
+        cron_time: CanvasDate(new Date()),
       }),
     })
     if (!response.ok) throw new Error(`Failed to configure canvas, ${await response.text()}`)

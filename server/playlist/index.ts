@@ -16,7 +16,7 @@ export namespace Playlist {
     const storage = useStorage('playlist')
     await storage.setItem<PlaylistType>(playlistId, {
       id: playlistId,
-      status: 'started',
+      status: 'in-progress',
       availableImagesId: await Images.getAllImagesId(),
     })
     return playlistId
@@ -31,24 +31,14 @@ export namespace Playlist {
     if (!playlist) return 'playlist-not-found' as const
     const { availableImagesId, status } = playlist
     return await match(status)
-      .with('started', async () => {
-        if (availableImagesId.length === 0) return 'playlist-empty' as const
-        const nextImageId = getRandomImageId(availableImagesId)
-        const nextImage = await Images.getById(nextImageId)
-        if (nextImage === 'not-found') return 'image-not-found' as const
-        await storage.setItem<PlaylistType>(playlistId, {
-          ...playlist,
-          status: 'in-progress',
-          availableImagesId: availableImagesId.filter((id) => id !== nextImageId),
-        })
-        return { nextImage, displayedAt: new Date() }
-      })
       .with('in-progress', async () => {
         if (availableImagesId.length === 0) {
+          const availableImagesId = await Images.getAllImagesId()
+          if (availableImagesId.length === 0) return 'playlist-empty' as const
           // Loop
           await storage.setItem<PlaylistType>(playlistId, {
             ...playlist,
-            availableImagesId: await Images.getAllImagesId(),
+            availableImagesId,
           })
         }
         const nextImageId = getRandomImageId(availableImagesId)
