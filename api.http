@@ -19,6 +19,9 @@ Content-Type: application/octet-stream
 GET {{base}}/images/{{image}}
 Accept: image/jpeg
 
+### DELETE all images
+DELETE {{base}}/images
+
 //***********************************************************//
 //************************** CANVAS *************************//
 //***********************************************************//
@@ -35,4 +38,3 @@ Content-Type: application/json
   "upstream_url": "{{base}}",
   "cron_time": null
 }
-

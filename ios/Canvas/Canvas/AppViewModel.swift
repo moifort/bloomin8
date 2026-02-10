@@ -11,23 +11,29 @@ final class AppViewModel: ObservableObject {
 
     @Published private(set) var isUploading = false
     @Published private(set) var isStartingPlaylist = false
+    @Published private(set) var isDeletingPhotos = false
     @Published private(set) var progress = UploadProgress.empty
     @Published private(set) var statusText: String = ""
     @Published private(set) var errorText: String?
 
     private var uploadTask: Task<Void, Never>?
     private var playlistStartTask: Task<Void, Never>?
+    private var deletePhotosTask: Task<Void, Never>?
 
     var isPhotoAccessGranted: Bool {
         authorizationStatus == .authorized || authorizationStatus == .limited
     }
 
     var canStartUpload: Bool {
-        isPhotoAccessGranted && selectedAlbumId != nil && !isUploading && !isStartingPlaylist
+        isPhotoAccessGranted && selectedAlbumId != nil && !isUploading && !isStartingPlaylist && !isDeletingPhotos
     }
 
     var canStartPlaylist: Bool {
-        !isUploading && !isStartingPlaylist
+        !isUploading && !isStartingPlaylist && !isDeletingPhotos
+    }
+
+    var canDeletePhotos: Bool {
+        !isUploading && !isStartingPlaylist && !isDeletingPhotos
     }
 
     func bootstrap() async {
@@ -103,6 +109,20 @@ final class AppViewModel: ObservableObject {
         }
     }
 
+    func deleteAllPhotos() {
+        errorText = nil
+
+        guard let url = validatedHTTPURL(serverURL) else {
+            errorText = AppError.invalidServerURL.localizedDescription
+            return
+        }
+
+        deletePhotosTask?.cancel()
+        deletePhotosTask = Task {
+            await runDeleteAllPhotos(baseURL: url)
+        }
+    }
+
     private func runUpload(albumId: String, baseURL: URL) async {
         isUploading = true
         progress = .empty
@@ -164,6 +184,24 @@ final class AppViewModel: ObservableObject {
         let service = PlaylistService(baseURL: baseURL)
         do {
             statusText = try await service.start()
+        } catch {
+            errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    private func runDeleteAllPhotos(baseURL: URL) async {
+        isDeletingPhotos = true
+        statusText = "Suppression des photos serveur..."
+        errorText = nil
+
+        defer {
+            isDeletingPhotos = false
+            deletePhotosTask = nil
+        }
+
+        let service = ImageService(baseURL: baseURL)
+        do {
+            statusText = try await service.deleteAll()
         } catch {
             errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }

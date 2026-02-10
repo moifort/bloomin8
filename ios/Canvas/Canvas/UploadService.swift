@@ -151,3 +151,64 @@ struct PlaylistService {
         throw PlaylistError.server(statusCode: http.statusCode, message: decodedMessage ?? fallbackMessage)
     }
 }
+
+struct ImageService {
+    struct ResponseEnvelope: Decodable {
+        let status: Int?
+        let message: String?
+    }
+
+    enum ImageError: LocalizedError {
+        case invalidHTTPResponse
+        case server(statusCode: Int, message: String)
+        case transport(Error)
+
+        var errorDescription: String? {
+            switch self {
+            case .invalidHTTPResponse:
+                return "Reponse HTTP invalide."
+            case let .server(statusCode, message):
+                return "Serveur \(statusCode): \(message)"
+            case let .transport(error):
+                return error.localizedDescription
+            }
+        }
+    }
+
+    let baseURL: URL
+    let session: URLSession
+
+    init(baseURL: URL, session: URLSession = .shared) {
+        self.baseURL = baseURL
+        self.session = session
+    }
+
+    func deleteAll() async throws -> String {
+        let endpoint = baseURL.appendingPathComponent("images")
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "DELETE"
+        request.timeoutInterval = 30
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw ImageError.transport(error)
+        }
+
+        guard let http = response as? HTTPURLResponse else {
+            throw ImageError.invalidHTTPResponse
+        }
+
+        if (200 ..< 300).contains(http.statusCode) {
+            let envelope = try? JSONDecoder().decode(ResponseEnvelope.self, from: data)
+            return envelope?.message ?? "Photos supprimees."
+        }
+
+        let decodedMessage = (try? JSONDecoder().decode(ResponseEnvelope.self, from: data))?.message
+        let fallbackMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+        throw ImageError.server(statusCode: http.statusCode, message: decodedMessage ?? fallbackMessage)
+    }
+}

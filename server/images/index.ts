@@ -34,4 +34,11 @@ export namespace Images {
     const storage = useStorage('images')
     return await storage.getKeys().then((keys) => keys.map((key) => ImageId(key)))
   }
+
+  export const deleteAll = async () => {
+    const storage = useStorage('images')
+    const imageIds = await getAllImagesId()
+    await Promise.all(imageIds.map((id) => storage.removeItem(id)))
+    return imageIds.length
+  }
 }

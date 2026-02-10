@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var viewModel = AppViewModel()
+    @State private var showDeleteAllPhotosConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -14,6 +15,17 @@ struct ContentView: View {
         }
         .task {
             await viewModel.bootstrap()
+        }
+        .confirmationDialog(
+            "Supprimer toutes les photos serveur ?",
+            isPresented: $showDeleteAllPhotosConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Supprimer", role: .destructive) {
+                viewModel.deleteAllPhotos()
+            }
+        } message: {
+            Text("Cette action est irreversible.")
         }
     }
 
@@ -29,7 +41,17 @@ struct ContentView: View {
             }
             .disabled(!viewModel.canStartPlaylist)
 
+            Button("Supprimer toutes les photos serveur", role: .destructive) {
+                showDeleteAllPhotosConfirmation = true
+            }
+            .disabled(!viewModel.canDeletePhotos)
+
             if viewModel.isStartingPlaylist {
+                ProgressView()
+                    .controlSize(.small)
+            }
+
+            if viewModel.isDeletingPhotos {
                 ProgressView()
                     .controlSize(.small)
             }

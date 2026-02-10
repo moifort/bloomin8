@@ -5,5 +5,5 @@ dist
 .cache
 .output
 .env.local
-
+.derivedData
 images
