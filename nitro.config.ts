@@ -2,9 +2,9 @@ export default defineNitroConfig({
   compatibilityDate: '2026-02-06',
   srcDir: 'server',
   runtimeConfig: {
-    canvasUrl: process.env.CANVAS_URL ?? 'http://192.168.0.174',
-    serverUrl: process.env.SERVER_URL ?? 'http://192.168.0.164:3000',
-    cronIntervalInHours: process.env.CRON_INTERVAL_IN_HOURS ?? '3',
+    canvasUrl: 'http://192.168.0.174',
+    serverUrl: 'http://192.168.0.164:3000',
+    cronIntervalInHours: '3',
   },
   storage: {
     images: {
