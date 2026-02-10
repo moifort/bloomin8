@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: only used for primitives */
 import { make } from 'ts-brand'
 import type { PlaylistId as PlaylistIdType } from '~/playlist/type'
 
