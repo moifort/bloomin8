@@ -14,7 +14,7 @@ output
 *.xcuserstate
 
 # Xcode user data
-/ios/Canvas/Canvas.xcodeproj/xcuserdata/
+/ios/Canvas/Canvas.xcodeproj/xcuserdata
 
 # Derived data
 DerivedData/
