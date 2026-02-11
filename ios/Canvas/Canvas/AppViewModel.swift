@@ -13,7 +13,6 @@ final class AppViewModel: ObservableObject {
 
     @Published private(set) var isUploading = false
     @Published private(set) var isStartingPlaylist = false
-    @Published private(set) var isDeletingPhotos = false
     @Published private(set) var progress = UploadProgress.empty
     @Published private(set) var statusText: String = ""
     @Published private(set) var errorText: String?
@@ -22,26 +21,25 @@ final class AppViewModel: ObservableObject {
 
     private var uploadTask: Task<Void, Never>?
     private var playlistStartTask: Task<Void, Never>?
-    private var deletePhotosTask: Task<Void, Never>?
 
     var isPhotoAccessGranted: Bool {
         authorizationStatus == .authorized || authorizationStatus == .limited
     }
 
     var canStartUpload: Bool {
-        isPhotoAccessGranted && selectedAlbumId != nil && !isUploading && !isStartingPlaylist && !isDeletingPhotos
+        isPhotoAccessGranted && selectedAlbumId != nil && !isUploading && !isStartingPlaylist
     }
 
     var canStartPlaylist: Bool {
-        !isUploading && !isStartingPlaylist && !isDeletingPhotos
-    }
-
-    var canDeletePhotos: Bool {
-        !isUploading && !isStartingPlaylist && !isDeletingPhotos
+        !isUploading && !isStartingPlaylist
     }
 
     func bootstrap() async {
         authorizationStatus = PhotoLibraryService.authorizationStatus()
+        if !isPhotoAccessGranted {
+            authorizationStatus = await PhotoLibraryService.requestAuthorization()
+        }
+
         guard isPhotoAccessGranted else { return }
         reloadAlbums()
     }
@@ -125,20 +123,6 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    func deleteAllPhotos() {
-        errorText = nil
-
-        guard let url = validatedHTTPURL(serverURL) else {
-            errorText = AppError.invalidServerURL.localizedDescription
-            return
-        }
-
-        deletePhotosTask?.cancel()
-        deletePhotosTask = Task {
-            await runDeleteAllPhotos(baseURL: url)
-        }
-    }
-
     private func runUpload(albumId: String, baseURL: URL) async {
         isUploading = true
         progress = .empty
@@ -156,6 +140,21 @@ final class AppViewModel: ObservableObject {
             return
         }
 
+        statusText = "Suppression des photos serveur..."
+        let imageService = ImageService(baseURL: baseURL)
+        do {
+            _ = try await imageService.deleteAll()
+        } catch {
+            errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            return
+        }
+
+        if Task.isCancelled {
+            statusText = "Upload annule."
+            return
+        }
+
+        statusText = "Upload en cours..."
         let uploader = UploadService(baseURL: baseURL)
         progress = UploadProgress(total: assets.count, processed: 0, uploaded: 0, failed: 0)
 
@@ -261,24 +260,6 @@ final class AppViewModel: ObservableObject {
                 canvasURL: canvasURL,
                 cronIntervalInHours: cronIntervalInHours
             )
-        } catch {
-            errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-        }
-    }
-
-    private func runDeleteAllPhotos(baseURL: URL) async {
-        isDeletingPhotos = true
-        statusText = "Suppression des photos serveur..."
-        errorText = nil
-
-        defer {
-            isDeletingPhotos = false
-            deletePhotosTask = nil
-        }
-
-        let service = ImageService(baseURL: baseURL)
-        do {
-            statusText = try await service.deleteAll()
         } catch {
             errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }

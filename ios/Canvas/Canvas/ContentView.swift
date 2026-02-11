@@ -2,66 +2,57 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var viewModel = AppViewModel()
-    @State private var showDeleteAllPhotosConfirmation = false
 
     var body: some View {
         NavigationStack {
             Form {
-                serverSection
+                configurationSection
                 photoSection
-                uploadSection
             }
             .navigationTitle("Canvas")
         }
         .task {
             await viewModel.bootstrap()
         }
-        .confirmationDialog(
-            "Supprimer toutes les photos serveur ?",
-            isPresented: $showDeleteAllPhotosConfirmation,
-            titleVisibility: .visible
-        ) {
-            Button("Supprimer", role: .destructive) {
-                viewModel.deleteAllPhotos()
-            }
-        } message: {
-            Text("Cette action est irreversible.")
-        }
     }
 
-    private var serverSection: some View {
-        Section("Serveur") {
-            TextField("http://192.168.0.165:3000", text: $viewModel.serverURL)
-                .keyboardType(.URL)
-                .textInputAutocapitalization(.never)
-                .disableAutocorrection(true)
-
-            TextField("http://192.168.0.174", text: $viewModel.canvasURL)
-                .keyboardType(.URL)
-                .textInputAutocapitalization(.never)
-                .disableAutocorrection(true)
-
-            TextField("3", text: $viewModel.cronIntervalInHours)
-                .keyboardType(.numberPad)
-
-            Button("Lancer la playlist") {
-                viewModel.startPlaylist()
-            }
-            .disabled(!viewModel.canStartPlaylist)
-
-            Button("Supprimer toutes les photos serveur", role: .destructive) {
-                showDeleteAllPhotosConfirmation = true
-            }
-            .disabled(!viewModel.canDeletePhotos)
-
-            if viewModel.isStartingPlaylist {
-                ProgressView()
-                    .controlSize(.small)
+    private var configurationSection: some View {
+        Section("Configuration") {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("URL du serveur API")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                TextField("http://192.168.0.165:3000", text: $viewModel.serverURL)
+                    .keyboardType(.URL)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                Text("Serveur qui recoit les photos et gere la playlist.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
 
-            if viewModel.isDeletingPhotos {
-                ProgressView()
-                    .controlSize(.small)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("URL du canvas")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                TextField("http://192.168.0.174", text: $viewModel.canvasURL)
+                    .keyboardType(.URL)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                Text("Adresse du canvas cible pour le lancement de la playlist.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Intervalle entre chaque image (heures)")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                TextField("3", text: $viewModel.cronIntervalInHours)
+                    .keyboardType(.numberPad)
+                Text("Nombre d'heures entre chaque image.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -82,30 +73,43 @@ struct ContentView: View {
                     .pickerStyle(.navigationLink)
                 }
 
-                Button("Recharger les albums") {
-                    viewModel.reloadAlbums()
+                Button("Uploader l'album") {
+                    viewModel.startUpload()
                 }
-            } else {
-                Text("L'app doit acceder a ta phototheque.")
-                    .foregroundStyle(.secondary)
-                Button("Autoriser Photos") {
-                    viewModel.requestPhotoAccess()
+                .disabled(!viewModel.canStartUpload)
+
+                Button("Start") {
+                    viewModel.startPlaylist()
                 }
-            }
-        }
-    }
+                .disabled(!viewModel.canStartPlaylist)
 
-    private var uploadSection: some View {
-        Section("Upload") {
-            Text("Conversion appliquee: JPEG 1200x1600, orientation envoyee en P/L")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-
-            if viewModel.isUploading {
-                ProgressView(value: viewModel.progress.fractionCompleted)
-                Text("\(viewModel.progress.processed)/\(viewModel.progress.total)")
+                Text("Le canvas doit etre up et accessible sur le reseau.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+
+                if viewModel.isUploading {
+                    ProgressView(value: viewModel.progress.fractionCompleted)
+                    Text("\(viewModel.progress.processed)/\(viewModel.progress.total)")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                if viewModel.isUploading {
+                    Button("Annuler l'envoi", role: .destructive) {
+                        viewModel.cancelUpload()
+                    }
+                }
+
+                if viewModel.isStartingPlaylist {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+            } else {
+                Text("L'app demande l'acces a la phototheque au demarrage.")
+                    .foregroundStyle(.secondary)
+                Button("Reessayer l'autorisation Photos") {
+                    viewModel.requestPhotoAccess()
+                }
             }
 
             if !viewModel.statusText.isEmpty {
@@ -117,17 +121,6 @@ struct ContentView: View {
                 Text(error)
                     .font(.footnote)
                     .foregroundStyle(.red)
-            }
-
-            Button("Convertir et envoyer") {
-                viewModel.startUpload()
-            }
-            .disabled(!viewModel.canStartUpload)
-
-            if viewModel.isUploading {
-                Button("Annuler", role: .destructive) {
-                    viewModel.cancelUpload()
-                }
             }
         }
     }
