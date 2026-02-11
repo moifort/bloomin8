@@ -18,13 +18,6 @@ ENV PORT=3000
 ENV NITRO_SERVER_URL=http://127.0.0.1:3000
 
 COPY --from=build /app/.output ./.output
-RUN cd .output/server && bun install --production
-
-RUN addgroup -S app && adduser -S app -G app \
-  && mkdir -p /app/data/images /app/data/playlist \
-  && chown -R app:app /app
-
-USER app
 
 EXPOSE 3000
 
