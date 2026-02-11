@@ -2,7 +2,7 @@ import { Canvas } from '~/canvas/index'
 import { config } from '~/config/index'
 import { Playlist } from '~/playlist/index'
 
-export default eventHandler(async () => {
+export default defineEventHandler(async () => {
   const { serverUrl } = config()
   const nextImage = await Playlist.nextImage()
   if (nextImage === 'playlist-not-found') return Canvas.stopPulling()

@@ -2,7 +2,7 @@
 @base = http://192.168.0.164:3000
 #@base = http://192.168.0.165:3000
 @canvas = http://192.168.0.174
-@image = 3ec638c4-f069-41f4-9393-39cc60bca705_P.jpg
+@image = 303f4ccd-4667-45a2-b514-be1ffdfe7556_P.jpg
 
 ### START
 POST {{base}}/playlist/start
@@ -26,6 +26,9 @@ Accept: image/jpeg
 ### DELETE all images
 DELETE {{base}}/images
 
+### GET latest canvas battery
+GET {{base}}/canvas/battery
+
 //***********************************************************//
 //************************** CANVAS *************************//
 //***********************************************************//
@@ -42,3 +45,6 @@ Content-Type: application/json
   "upstream_url": "{{base}}",
   "cron_time": null
 }
+
+### GET pull callback sample with battery
+GET {{base}}/eink_pull?pull_id=aa16e2e8-5d55-45be-9df4-97b27708ada2&cron_time=2026-02-11T08:11:31Z&battery=71

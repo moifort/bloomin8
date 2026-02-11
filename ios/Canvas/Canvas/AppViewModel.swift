@@ -4,11 +4,24 @@ import Photos
 
 @MainActor
 final class AppViewModel: ObservableObject {
+    private static let serverURLDefaultsKey = "canvas.server.url"
+    private static let canvasURLDefaultsKey = "canvas.device.url"
+    private static let defaultServerURL = "http://192.168.0.165:3000"
+    private static let defaultCanvasURL = "http://192.168.0.174"
+
     @Published private(set) var authorizationStatus: PHAuthorizationStatus = PhotoLibraryService.authorizationStatus()
     @Published private(set) var albums: [PhotoAlbum] = []
     @Published var selectedAlbumId: String?
-    @Published var serverURL: String = "http://192.168.0.165:3000"
-    @Published var canvasURL: String = "http://192.168.0.174"
+    @Published var serverURL: String {
+        didSet {
+            userDefaults.set(serverURL, forKey: Self.serverURLDefaultsKey)
+        }
+    }
+    @Published var canvasURL: String {
+        didSet {
+            userDefaults.set(canvasURL, forKey: Self.canvasURLDefaultsKey)
+        }
+    }
     @Published var cronIntervalInHours: String = "3"
 
     @Published private(set) var isUploading = false
@@ -16,11 +29,19 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var progress = UploadProgress.empty
     @Published private(set) var statusText: String = ""
     @Published private(set) var errorText: String?
+    @Published private(set) var canvasBatteryPercentage: Int?
 
     private let maxConcurrentUploads = 2
+    private let userDefaults: UserDefaults
 
     private var uploadTask: Task<Void, Never>?
     private var playlistStartTask: Task<Void, Never>?
+
+    init(userDefaults: UserDefaults = .standard) {
+        self.userDefaults = userDefaults
+        self.serverURL = userDefaults.string(forKey: Self.serverURLDefaultsKey) ?? Self.defaultServerURL
+        self.canvasURL = userDefaults.string(forKey: Self.canvasURLDefaultsKey) ?? Self.defaultCanvasURL
+    }
 
     var isPhotoAccessGranted: Bool {
         authorizationStatus == .authorized || authorizationStatus == .limited
@@ -40,8 +61,23 @@ final class AppViewModel: ObservableObject {
             authorizationStatus = await PhotoLibraryService.requestAuthorization()
         }
 
+        await refreshCanvasBattery()
         guard isPhotoAccessGranted else { return }
         reloadAlbums()
+    }
+
+    func refreshCanvasBattery() async {
+        guard let baseURL = validatedHTTPURL(serverURL) else {
+            canvasBatteryPercentage = nil
+            return
+        }
+
+        let service = CanvasStatusService(baseURL: baseURL)
+        do {
+            canvasBatteryPercentage = try await service.getBatteryReport()
+        } catch {
+            canvasBatteryPercentage = nil
+        }
     }
 
     func requestPhotoAccess() {
@@ -263,6 +299,8 @@ final class AppViewModel: ObservableObject {
         } catch {
             errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
+
+        await refreshCanvasBattery()
     }
 
     private func validatedHTTPURL(_ rawValue: String) -> URL? {

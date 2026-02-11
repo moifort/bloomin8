@@ -312,6 +312,12 @@ Do not repeat (updated 2026-02-11):
   Local anchor: `server/playlist/primitives.ts` (`Hour` error label must reference `Hour`).
 - Keep parsing/validation at module boundaries and do not duplicate it across routes and domain orchestration.
   Local anchor: `server/routes/playlist/start.post.ts` consumes constructors from `server/playlist/primitives.ts`.
+- When users rename domain concepts, propagate the same ubiquitous language through types, primitives, and use cases instead of introducing parallel aliases.
+  Local anchor: `server/canvas/types.ts` (`BatteryPercentage`), `server/canvas/primitives.ts` (`BatteryPercentage(...)`), `server/canvas/index.ts` (`saveBattery`, `getBattery`).
+- Middleware that ingests optional telemetry must be non-blocking for primary request flow and scoped to the intended endpoint.
+  Local anchor: `server/middleware/canvas-battery.ts` (`/eink_pull` guard + invalid input tolerated).
+- Mobile decoders must tolerate active API contracts and recent contract transitions when backend payload shapes are intentionally simplified.
+  Local anchor: `ios/Canvas/Canvas/UploadService.swift` (`CanvasStatusService.ResponseEnvelope.Payload` supports numeric, sentinel string, and legacy object payloads).
 
 ---
 

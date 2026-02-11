@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var viewModel = AppViewModel()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         NavigationStack {
@@ -14,34 +15,46 @@ struct ContentView: View {
         .task {
             await viewModel.bootstrap()
         }
+        .onChange(of: scenePhase) { newPhase in
+            guard newPhase == .active else { return }
+            Task {
+                await viewModel.refreshCanvasBattery()
+            }
+        }
+        .onChange(of: viewModel.serverURL) { _ in
+            Task {
+                await viewModel.refreshCanvasBattery()
+            }
+        }
     }
 
     private var configurationSection: some View {
         Section("Configuration") {
             VStack(alignment: .leading, spacing: 6) {
-                Text("URL du serveur API")
+                Text("URL du serveur")
                     .font(.subheadline)
                     .fontWeight(.semibold)
                 TextField("http://192.168.0.165:3000", text: $viewModel.serverURL)
                     .keyboardType(.URL)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
-                Text("Serveur qui recoit les photos et gere la playlist.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text("URL du canvas")
+                Text("URL du BLOOMIN8")
                     .font(.subheadline)
                     .fontWeight(.semibold)
                 TextField("http://192.168.0.174", text: $viewModel.canvasURL)
                     .keyboardType(.URL)
                     .textInputAutocapitalization(.never)
                     .disableAutocorrection(true)
-                Text("Adresse du canvas cible pour le lancement de la playlist.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 6) {
+                    Image(systemName: canvasBatteryIconName)
+                    Text(canvasBatteryText)
+                }
+                .font(.footnote)
+                .foregroundStyle(.secondary)
             }
 
             VStack(alignment: .leading, spacing: 6) {
@@ -50,9 +63,6 @@ struct ContentView: View {
                     .fontWeight(.semibold)
                 TextField("3", text: $viewModel.cronIntervalInHours)
                     .keyboardType(.numberPad)
-                Text("Nombre d'heures entre chaque image.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -130,5 +140,31 @@ struct ContentView: View {
             get: { viewModel.selectedAlbumId },
             set: { viewModel.selectedAlbumId = $0 }
         )
+    }
+
+    private var canvasBatteryText: String {
+        guard let percentage = viewModel.canvasBatteryPercentage else {
+            return "Batterie indisponible"
+        }
+        return "\(percentage)%"
+    }
+
+    private var canvasBatteryIconName: String {
+        guard let percentage = viewModel.canvasBatteryPercentage else {
+            return "battery.0"
+        }
+
+        switch percentage {
+        case 0 ... 10:
+            return "battery.0"
+        case 11 ... 35:
+            return "battery.25"
+        case 36 ... 60:
+            return "battery.50"
+        case 61 ... 85:
+            return "battery.75"
+        default:
+            return "battery.100"
+        }
     }
 }

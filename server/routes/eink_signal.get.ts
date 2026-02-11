@@ -1,6 +1,1 @@
-export default eventHandler(async () => {
-  return {
-    status: 200,
-    message: 'Feedback recorded',
-  }
-})
+export default defineEventHandler(async () => ({ status: 200, message: 'Feedback recorded' }))

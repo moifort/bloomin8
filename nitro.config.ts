@@ -13,6 +13,10 @@ export default defineNitroConfig({
       driver: 'fs',
       base: './data/playlist',
     },
+    canvas: {
+      driver: 'fs',
+      base: './data/canvas',
+    },
   },
   routeRules: {
     '/images/**': {

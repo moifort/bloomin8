@@ -1,7 +1,7 @@
 import { Images } from '~/images/index'
 import { ImageOrientation, ImageRaw } from '~/images/primitives'
 
-export default eventHandler(async (event) => {
+export default defineEventHandler(async (event) => {
   const orientation = ImageOrientation(getQuery(event).orientation)
   const image = await readRawBody(event, false)
   if (!image) throw createError({ statusCode: 400, statusMessage: 'No raw provided' })

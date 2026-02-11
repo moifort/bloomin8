@@ -1,4 +1,5 @@
 import { CanvasDate } from '~/canvas/primitives'
+import type { BatteryPercentage } from '~/canvas/types'
 import type { CanvasUrl, ServerUrl } from '~/config/types'
 import type { ImageUrl } from '~/images/types'
 
@@ -49,4 +50,16 @@ export namespace Canvas {
     message: 'Stopping scheduled pull',
     data: { next_cron_time: null },
   })
+
+  export const saveBattery = async (level: BatteryPercentage) => {
+    const storage = useStorage('canvas')
+    await storage.setItem<BatteryPercentage>('battery', level)
+  }
+
+  export const getBattery = async () => {
+    const storage = useStorage('canvas')
+    const level = await storage.getItem<BatteryPercentage>('battery')
+    if (!level) return 'battery-unavailable' as const
+    return level
+  }
 }

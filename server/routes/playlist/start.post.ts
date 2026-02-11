@@ -2,7 +2,7 @@ import { config } from '~/config/index'
 import { Playlist } from '~/playlist/index'
 import { CanvasUrl, Hour } from '~/playlist/primitives'
 
-export default eventHandler(async (event) => {
+export default defineEventHandler(async (event) => {
   const { serverUrl } = config()
   const { canvasUrl, cronIntervalInHours } = await readBody(event)
   const playlistId = await Playlist.start(

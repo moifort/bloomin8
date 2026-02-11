@@ -53,6 +53,7 @@ Nitro storage buckets are configured in `/Users/thibaut/Code/canvas/nitro.config
 
 - `images` -> `./data/images`
 - `playlist` -> `./data/playlist`
+- `canvas` -> `./data/canvas`
 
 Playlist state is persisted, including:
 - Playlist status (`in-progress` or `stop`)
@@ -99,6 +100,15 @@ Behavior:
 - Returns `SHOW` payload with `image_url` and next schedule when an image is available.
 - Returns stop payload (`next_cron_time: null`) when playlist is missing/stopped/empty.
 - Returns no-image payload for image lookup misses.
+- Captures optional query parameter `battery` (`0..100`) and persists the latest percentage.
+
+### `GET /canvas/battery`
+
+Returns the latest battery report received from the canvas pull loop.
+
+- Success response:
+  - `200` with `{ status, data: 71 }` when a battery value is available
+  - `200` with `{ status, data: "battery-unavailable" }` when no report has been received yet
 
 ### `GET /eink_signal`
 
