@@ -8,6 +8,8 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var albums: [PhotoAlbum] = []
     @Published var selectedAlbumId: String?
     @Published var serverURL: String = "http://192.168.0.165:3000"
+    @Published var canvasURL: String = "http://192.168.0.174"
+    @Published var cronIntervalInHours: String = "3"
 
     @Published private(set) var isUploading = false
     @Published private(set) var isStartingPlaylist = false
@@ -104,10 +106,22 @@ final class AppViewModel: ObservableObject {
             errorText = AppError.invalidServerURL.localizedDescription
             return
         }
+        guard let canvasEndpoint = validatedHTTPURL(canvasURL) else {
+            errorText = "URL Canvas invalide."
+            return
+        }
+        guard let parsedCronIntervalInHours = validatedPositiveInt(cronIntervalInHours) else {
+            errorText = "Intervalle cron invalide (entier > 0 requis)."
+            return
+        }
 
         playlistStartTask?.cancel()
         playlistStartTask = Task {
-            await runPlaylistStart(baseURL: url)
+            await runPlaylistStart(
+                baseURL: url,
+                canvasURL: canvasEndpoint,
+                cronIntervalInHours: parsedCronIntervalInHours
+            )
         }
     }
 
@@ -227,7 +241,11 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    private func runPlaylistStart(baseURL: URL) async {
+    private func runPlaylistStart(
+        baseURL: URL,
+        canvasURL: URL,
+        cronIntervalInHours: Int
+    ) async {
         isStartingPlaylist = true
         statusText = "Lancement de la playlist..."
         errorText = nil
@@ -239,7 +257,10 @@ final class AppViewModel: ObservableObject {
 
         let service = PlaylistService(baseURL: baseURL)
         do {
-            statusText = try await service.start()
+            statusText = try await service.start(
+                canvasURL: canvasURL,
+                cronIntervalInHours: cronIntervalInHours
+            )
         } catch {
             errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
@@ -270,5 +291,13 @@ final class AppViewModel: ObservableObject {
         }
 
         return url
+    }
+
+    private func validatedPositiveInt(_ rawValue: String) -> Int? {
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let parsedValue = Int(trimmed), parsedValue > 0 else {
+            return nil
+        }
+        return parsedValue
     }
 }

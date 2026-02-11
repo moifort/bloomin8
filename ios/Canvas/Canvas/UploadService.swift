@@ -95,6 +95,11 @@ struct PlaylistService {
         let message: String?
     }
 
+    struct StartPlaylistPayload: Encodable {
+        let canvasUrl: String
+        let cronIntervalInHours: Int
+    }
+
     enum PlaylistError: LocalizedError {
         case invalidHTTPResponse
         case server(statusCode: Int, message: String)
@@ -120,14 +125,21 @@ struct PlaylistService {
         self.session = session
     }
 
-    func start() async throws -> String {
+    func start(canvasURL: URL, cronIntervalInHours: Int) async throws -> String {
         let endpoint = baseURL
             .appendingPathComponent("playlist")
             .appendingPathComponent("start")
 
         var request = URLRequest(url: endpoint)
-        request.httpMethod = "GET"
+        request.httpMethod = "POST"
         request.timeoutInterval = 30
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(
+            StartPlaylistPayload(
+                canvasUrl: canvasURL.absoluteString,
+                cronIntervalInHours: cronIntervalInHours
+            )
+        )
 
         let data: Data
         let response: URLResponse

@@ -290,6 +290,24 @@ Testing:
 
 6. Add tests for primitives, use cases, and routes.
 
+## 16) User correction loop (mandatory)
+
+When the user asks to "take their modifications into account", the agent must update this file in the same task with concrete, testable lessons learned.
+
+Required protocol:
+1. Re-read the user-updated diff before any new implementation.
+2. Add or update a short "Do not repeat" list in this section.
+3. Reference concrete files/functions impacted by the correction.
+4. Prefer aligning with existing local module boundaries over introducing new ones.
+5. Run `bunx tsc --noEmit` after applying follow-up changes.
+
+Do not repeat (current project memory):
+- Keep `CanvasUrl` and `Hour` constructors in `/Users/thibaut/Code/canvas/server/playlist/primitives.ts` for playlist start input, instead of moving them to config primitives without request.
+- Keep route input mapping simple when primitives already enforce invariants (`/Users/thibaut/Code/canvas/server/routes/playlist/start.post.ts`).
+- Do not add new domain status variants unless explicitly requested; preserve established result unions.
+- Keep `cronIntervalInHours` sourced from persisted playlist state in `/Users/thibaut/Code/canvas/server/playlist/index.ts`, not from runtime config.
+- Preserve explicit handling for `'playlist-empty'` in start flow and HTTP mapping.
+
 ---
 
 If a requested implementation conflicts with this playbook, state the conflict explicitly, explain long term maintenance impact, and propose the smallest viable alternative that preserves clarity and reliability.

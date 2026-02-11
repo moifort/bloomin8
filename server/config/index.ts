@@ -1,10 +1,8 @@
-import { CanvasUrl, Hour, ServerUrl } from '~/config/primitives'
+import { ServerUrl } from '~/config/primitives'
 
 export const config = () => {
-  const config = useRuntimeConfig()
+  const runtimeConfig = useRuntimeConfig()
   return {
-    canvasUrl: CanvasUrl(config.canvasUrl),
-    serverUrl: ServerUrl(config.serverUrl),
-    cronIntervalInHours: Hour(config.cronIntervalInHours),
+    serverUrl: ServerUrl(runtimeConfig.serverUrl),
   }
 }

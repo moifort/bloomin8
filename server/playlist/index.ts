@@ -8,45 +8,43 @@ import type { Playlist as PlaylistType } from '~/playlist/type'
 
 export namespace Playlist {
   export const start = async (
-    canvasUrl: CanvasUrl,
     serverUrl: ServerUrl,
+    canvasUrl: CanvasUrl,
+    cronIntervalInHours: Hour,
     playlistId = PlaylistId('8d0fc632-378b-4fac-903c-96b4feb7d1c4'),
   ) => {
-    await Canvas.wakeUp(canvasUrl, serverUrl)
     const storage = useStorage('playlist')
+    const availableImagesId = await Images.getAllImagesId()
+    if (availableImagesId.length === 0) return 'playlist-empty' as const
     await storage.setItem<PlaylistType>(playlistId, {
       id: playlistId,
       status: 'in-progress',
-      availableImagesId: await Images.getAllImagesId(),
+      canvasUrl,
+      cronIntervalInHours,
+      availableImagesId,
     })
+    await Canvas.wakeUp(canvasUrl, serverUrl)
     return playlistId
   }
 
   export const nextImage = async (
-    cronIntervalInHours: Hour,
     playlistId = PlaylistId('8d0fc632-378b-4fac-903c-96b4feb7d1c4'),
   ) => {
     const storage = useStorage('playlist')
     const playlist = await storage.getItem<PlaylistType>(playlistId)
     if (!playlist) return 'playlist-not-found' as const
-    const { availableImagesId, status } = playlist
+    const { availableImagesId, status, cronIntervalInHours } = playlist
     return await match(status)
       .with('in-progress', async () => {
-        if (availableImagesId.length === 0) {
-          const availableImagesId = await Images.getAllImagesId()
-          if (availableImagesId.length === 0) return 'playlist-empty' as const
-          // Loop
-          await storage.setItem<PlaylistType>(playlistId, {
-            ...playlist,
-            availableImagesId,
-          })
-        }
-        const nextImageId = getRandomImageId(availableImagesId)
+        const ifEmptyLoopAvailableImagesId =
+          availableImagesId.length === 0 ? await Images.getAllImagesId() : availableImagesId
+        if (ifEmptyLoopAvailableImagesId.length === 0) return 'playlist-empty' as const
+        const nextImageId = getRandomImageId(ifEmptyLoopAvailableImagesId)
         const nextImage = await Images.getById(nextImageId)
         if (nextImage === 'not-found') return 'image-not-found' as const
         await storage.setItem<PlaylistType>(playlistId, {
           ...playlist,
-          availableImagesId: availableImagesId.filter((id) => id !== nextImageId),
+          availableImagesId: ifEmptyLoopAvailableImagesId.filter((id) => id !== nextImageId),
         })
         return {
           nextImage,

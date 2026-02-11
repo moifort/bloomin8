@@ -9,9 +9,7 @@ services:
       HOST: 0.0.0.0
       PORT: "3000"
       DATA_DIR: /data
-      NITRO_CANVAS_URL: http://192.168.0.174
       NITRO_SERVER_URL: http://192.168.0.165:3000
-      NITRO_CRON_INTERVAL_IN_HOURS: "3"
     ports:
       - "3000:3000"
     volumes:

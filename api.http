@@ -1,14 +1,18 @@
 ### Base
-#@base = http://192.168.0.164:3000
-@base = http://192.168.0.165:3000
+@base = http://192.168.0.164:3000
+#@base = http://192.168.0.165:3000
 @canvas = http://192.168.0.174
 @image = 3ec638c4-f069-41f4-9393-39cc60bca705_P.jpg
 
 ### START
-GET {{base}}/playlist/start
+POST {{base}}/playlist/start
+Content-Type: application/json
 
+{
+  "canvasUrl": "{{canvas}}",
+  "cronIntervalInHours": 3
+}
 
-//************************ Images ***************************//
 ### POST upload image
 POST {{base}}/upload?orientation=P
 Content-Type: application/octet-stream

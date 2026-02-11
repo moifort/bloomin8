@@ -3,8 +3,8 @@ import { config } from '~/config/index'
 import { Playlist } from '~/playlist/index'
 
 export default eventHandler(async () => {
-  const { cronIntervalInHours, serverUrl } = config()
-  const nextImage = await Playlist.nextImage(cronIntervalInHours)
+  const { serverUrl } = config()
+  const nextImage = await Playlist.nextImage()
   if (nextImage === 'playlist-not-found') return Canvas.stopPulling()
   if (nextImage === 'playlist-stopped') return Canvas.stopPulling()
   if (nextImage === 'playlist-empty') return Canvas.stopPulling()

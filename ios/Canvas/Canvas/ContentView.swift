@@ -36,6 +36,14 @@ struct ContentView: View {
                 .textInputAutocapitalization(.never)
                 .disableAutocorrection(true)
 
+            TextField("http://192.168.0.174", text: $viewModel.canvasURL)
+                .keyboardType(.URL)
+                .textInputAutocapitalization(.never)
+                .disableAutocorrection(true)
+
+            TextField("3", text: $viewModel.cronIntervalInHours)
+                .keyboardType(.numberPad)
+
             Button("Lancer la playlist") {
                 viewModel.startPlaylist()
             }
