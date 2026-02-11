@@ -1,5 +1,5 @@
-/** biome-ignore-all lint/suspicious/noExplicitAny: only used for primitives */
 import { make } from 'ts-brand'
+import { z } from 'zod'
 import type {
   ImageId as ImageIdType,
   ImageOrientation as ImageOrientationType,
@@ -8,34 +8,24 @@ import type {
 } from '~/images/types'
 
 export const randomImageId = () => ImageId(crypto.randomUUID())
-export const ImageId = (value?: any) => {
-  if (!value) throw new Error(`ImageId must be a uuid, received: ${value}`)
-  if (typeof value !== 'string') throw new Error(`ImageId must be a string, received: ${value}`)
-  if (value.length !== 36) throw new Error(`ImageId must be 36 characters long, received: ${value}`)
-  return make<ImageIdType>()(value)
+export const ImageId = (value: unknown) => {
+  const validatedValue = z.uuid().parse(value)
+  return make<ImageIdType>()(validatedValue)
 }
 
-export const ImageUrl = (value?: any) => {
-  if (!value) throw new Error(`ImageUrl must be a string, received: ${value}`)
-  if (typeof value !== 'string') throw new Error(`ImageUrl must be a string, received: ${value}`)
-  if (!value.startsWith('/')) throw new Error(`ImageUrl must start with /, received: ${value}`)
-  return make<ImageUrlType>()(value)
+export const ImageUrl = (value: unknown) => {
+  const validatedValue = z.string().startsWith('/').parse(value)
+  return make<ImageUrlType>()(validatedValue)
 }
 
-export const ImageRaw = (value?: any) => {
-  if (!value) throw new Error(`ImageRaw must be a string, received: ${value}`)
-  if (typeof value !== 'string' && !Buffer.isBuffer(value))
-    throw new Error(`ImageRaw must be a string, received: ${value}`)
-  const raw = value instanceof Buffer ? value.toString('base64') : value
-  if (!raw) throw new Error(`ImageRaw must be a string, received: ${raw}`)
-  return make<ImageRawType>()(raw)
+export const ImageRaw = (value: unknown) => {
+  const validatedValue = z.union([z.string(), z.instanceof(Buffer)]).parse(value)
+  const normalizedRaw = validatedValue instanceof Buffer ? validatedValue.toString('base64') : validatedValue
+  const nonEmptyRaw = z.string().min(1).parse(normalizedRaw)
+  return make<ImageRawType>()(nonEmptyRaw)
 }
 
-export const ImageOrientation = (value?: any) => {
-  if (typeof value !== 'string')
-    throw new Error(`ImageOrientation must be a 'P' or 'L', received: ${value}`)
-  if (!value) throw new Error(`ImageOrientation must be 'P' or 'L', received: ${value}`)
-  if (value !== 'P' && value !== 'L')
-    throw new Error(`ImageOrientation must be 'P' or 'L', received: ${value}`)
-  return make<ImageOrientationType>()(value)
+export const ImageOrientation = (value: unknown) => {
+  const validatedValue = z.enum(['P', 'L']).parse(value)
+  return make<ImageOrientationType>()(validatedValue)
 }
