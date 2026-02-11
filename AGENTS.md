@@ -296,10 +296,22 @@ When the user asks to "take their modifications into account", the agent must up
 
 Required protocol:
 1. Re-read the user-updated diff before any new implementation.
-2. Add or update a short "Do not repeat" list in this section.
-3. Reference concrete files/functions impacted by the correction.
+2. Add or update a short "Do not repeat" list in this section using generic, reusable rules (pattern-level guidance, not one-off wording).
+3. Reference concrete files/functions impacted by the correction so each generic rule has a local anchor.
 4. Prefer aligning with existing local module boundaries over introducing new ones.
 5. Run `bunx tsc --noEmit` after applying follow-up changes.
+
+Do not repeat (updated 2026-02-11):
+- User corrections must be captured as generic engineering rules that remain valid beyond a single diff.
+  Local anchor: `AGENTS.md` section 16 and corrective application in `server/playlist/primitives.ts`.
+- Primitive boundaries must accept `unknown` and narrow explicitly; never use `any` in constructors.
+  Local anchor: `server/playlist/primitives.ts` (`PlaylistId`, `CanvasUrl`, `Hour`).
+- Brand creation must happen only after deterministic runtime validation.
+  Local anchor: `server/playlist/primitives.ts` (`PlaylistId`, `CanvasUrl`, `Hour` with Zod parse -> `make<...>()`).
+- Validation error messages must match the constructor context to prevent misleading diagnostics.
+  Local anchor: `server/playlist/primitives.ts` (`Hour` error label must reference `Hour`).
+- Keep parsing/validation at module boundaries and do not duplicate it across routes and domain orchestration.
+  Local anchor: `server/routes/playlist/start.post.ts` consumes constructors from `server/playlist/primitives.ts`.
 
 ---
 
