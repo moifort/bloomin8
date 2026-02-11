@@ -6,8 +6,37 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		BF02AA000000000000000003 /* CanvasBatteryWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = BF02AA000000000000000001 /* CanvasBatteryWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		BF02AA000000000000000012 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BF01EF382F36C1F800FC17DD /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BF02AA000000000000000008;
+			remoteInfo = CanvasBatteryWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		BF02AA000000000000000004 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BF02AA000000000000000003 /* CanvasBatteryWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		BF01EF402F36C1F800FC17DD /* Canvas.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Canvas.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BF02AA000000000000000001 /* CanvasBatteryWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CanvasBatteryWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -16,10 +45,22 @@
 			path = Canvas;
 			sourceTree = "<group>";
 		};
+		BF02AA000000000000000002 /* CanvasBatteryWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CanvasBatteryWidget;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		BF01EF3D2F36C1F800FC17DD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BF02AA000000000000000005 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,6 +74,7 @@
 			isa = PBXGroup;
 			children = (
 				BF01EF422F36C1F800FC17DD /* Canvas */,
+				BF02AA000000000000000002 /* CanvasBatteryWidget */,
 				BF01EF412F36C1F800FC17DD /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +83,7 @@
 			isa = PBXGroup;
 			children = (
 				BF01EF402F36C1F800FC17DD /* Canvas.app */,
+				BF02AA000000000000000001 /* CanvasBatteryWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -55,10 +98,12 @@
 				BF01EF3C2F36C1F800FC17DD /* Sources */,
 				BF01EF3D2F36C1F800FC17DD /* Frameworks */,
 				BF01EF3E2F36C1F800FC17DD /* Resources */,
+				BF02AA000000000000000004 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				BF02AA000000000000000013 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				BF01EF422F36C1F800FC17DD /* Canvas */,
@@ -69,6 +114,28 @@
 			productName = Canvas;
 			productReference = BF01EF402F36C1F800FC17DD /* Canvas.app */;
 			productType = "com.apple.product-type.application";
+		};
+		BF02AA000000000000000008 /* CanvasBatteryWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BF02AA000000000000000009 /* Build configuration list for PBXNativeTarget "CanvasBatteryWidget" */;
+			buildPhases = (
+				BF02AA000000000000000006 /* Sources */,
+				BF02AA000000000000000005 /* Frameworks */,
+				BF02AA000000000000000007 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				BF02AA000000000000000002 /* CanvasBatteryWidget */,
+			);
+			name = CanvasBatteryWidget;
+			packageProductDependencies = (
+			);
+			productName = CanvasBatteryWidget;
+			productReference = BF02AA000000000000000001 /* CanvasBatteryWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -81,6 +148,9 @@
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
 					BF01EF3F2F36C1F800FC17DD = {
+						CreatedOnToolsVersion = 26.2;
+					};
+					BF02AA000000000000000008 = {
 						CreatedOnToolsVersion = 26.2;
 					};
 				};
@@ -100,12 +170,20 @@
 			projectRoot = "";
 			targets = (
 				BF01EF3F2F36C1F800FC17DD /* Canvas */,
+				BF02AA000000000000000008 /* CanvasBatteryWidget */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		BF01EF3E2F36C1F800FC17DD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BF02AA000000000000000007 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +200,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BF02AA000000000000000006 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		BF02AA000000000000000013 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BF02AA000000000000000008 /* CanvasBatteryWidget */;
+			targetProxy = BF02AA000000000000000012 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		BF01EF492F36C1FA00FC17DD /* Debug */ = {
@@ -328,6 +421,68 @@
 			};
 			name = Release;
 		};
+		BF02AA000000000000000010 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 46C337T7YN;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CanvasBatteryWidget-Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = polyforms.canvas.batterywidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		BF02AA000000000000000011 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 46C337T7YN;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CanvasBatteryWidget-Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = polyforms.canvas.batterywidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -345,6 +500,15 @@
 			buildConfigurations = (
 				BF01EF4C2F36C1FA00FC17DD /* Debug */,
 				BF01EF4D2F36C1FA00FC17DD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BF02AA000000000000000009 /* Build configuration list for PBXNativeTarget "CanvasBatteryWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BF02AA000000000000000010 /* Debug */,
+				BF02AA000000000000000011 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

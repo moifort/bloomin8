@@ -6,6 +6,8 @@ import Photos
 final class AppViewModel: ObservableObject {
     private static let serverURLDefaultsKey = "canvas.server.url"
     private static let canvasURLDefaultsKey = "canvas.device.url"
+    private static let batteryPercentageDefaultsKey = "canvas.battery.percentage"
+    private static let sharedDefaultsSuiteName = "group.polyforms.canvas"
     private static let defaultServerURL = "http://192.168.0.165:3000"
     private static let defaultCanvasURL = "http://192.168.0.174"
 
@@ -14,12 +16,12 @@ final class AppViewModel: ObservableObject {
     @Published var selectedAlbumId: String?
     @Published var serverURL: String {
         didSet {
-            userDefaults.set(serverURL, forKey: Self.serverURLDefaultsKey)
+            persistServerURL()
         }
     }
     @Published var canvasURL: String {
         didSet {
-            userDefaults.set(canvasURL, forKey: Self.canvasURLDefaultsKey)
+            persistCanvasURL()
         }
     }
     @Published var cronIntervalInHours: String = "3"
@@ -29,18 +31,26 @@ final class AppViewModel: ObservableObject {
     @Published private(set) var progress = UploadProgress.empty
     @Published private(set) var statusText: String = ""
     @Published private(set) var errorText: String?
-    @Published private(set) var canvasBatteryPercentage: Int?
+    @Published private(set) var canvasBatteryPercentage: Int? {
+        didSet {
+            persistCanvasBatteryPercentage()
+        }
+    }
 
     private let maxConcurrentUploads = 2
     private let userDefaults: UserDefaults
+    private let sharedDefaults: UserDefaults?
 
     private var uploadTask: Task<Void, Never>?
     private var playlistStartTask: Task<Void, Never>?
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
+        self.sharedDefaults = UserDefaults(suiteName: Self.sharedDefaultsSuiteName)
         self.serverURL = userDefaults.string(forKey: Self.serverURLDefaultsKey) ?? Self.defaultServerURL
         self.canvasURL = userDefaults.string(forKey: Self.canvasURLDefaultsKey) ?? Self.defaultCanvasURL
+        persistServerURL()
+        persistCanvasURL()
     }
 
     var isPhotoAccessGranted: Bool {
@@ -318,5 +328,25 @@ final class AppViewModel: ObservableObject {
             return nil
         }
         return parsedValue
+    }
+
+    private func persistServerURL() {
+        userDefaults.set(serverURL, forKey: Self.serverURLDefaultsKey)
+        sharedDefaults?.set(serverURL, forKey: Self.serverURLDefaultsKey)
+    }
+
+    private func persistCanvasURL() {
+        userDefaults.set(canvasURL, forKey: Self.canvasURLDefaultsKey)
+        sharedDefaults?.set(canvasURL, forKey: Self.canvasURLDefaultsKey)
+    }
+
+    private func persistCanvasBatteryPercentage() {
+        guard let canvasBatteryPercentage else {
+            userDefaults.removeObject(forKey: Self.batteryPercentageDefaultsKey)
+            sharedDefaults?.removeObject(forKey: Self.batteryPercentageDefaultsKey)
+            return
+        }
+        userDefaults.set(canvasBatteryPercentage, forKey: Self.batteryPercentageDefaultsKey)
+        sharedDefaults?.set(canvasBatteryPercentage, forKey: Self.batteryPercentageDefaultsKey)
     }
 }
