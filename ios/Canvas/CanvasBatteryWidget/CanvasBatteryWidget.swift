@@ -285,30 +285,21 @@ private struct CanvasBatteryWidgetView: View {
     @Environment(\.widgetRenderingMode) var renderingMode
     @Environment(\.widgetFamily) var widgetFamily
 
-    private var ringSize: CGFloat {
+    private func ringSize(in geometry: GeometryProxy) -> CGFloat {
         switch widgetFamily {
         case .systemSmall:
-            return 96
+            return geometry.size.height * 0.52  // ~42% de la largeur
         case .systemMedium:
-            return 110
+            return geometry.size.height * 0.50  // ~50% de la hauteur
         case .systemLarge:
-            return 130
+            return geometry.size.height * 0.27  // ~27% de la hauteur
         default:
-            return 96
+            return geometry.size.height * 0.42
         }
     }
 
-    private var ringStrokeWidth: CGFloat {
-        switch widgetFamily {
-        case .systemSmall:
-            return 11
-        case .systemMedium:
-            return 13
-        case .systemLarge:
-            return 15
-        default:
-            return 11
-        }
+    private func ringStrokeWidth(for size: CGFloat) -> CGFloat {
+        return size * 0.125  // ~12.5% de la taille du ring
     }
 
     private var batteryProgress: Double {
@@ -327,86 +318,98 @@ private struct CanvasBatteryWidgetView: View {
         case 21 ... 40:
             return .orange
         default:
-            return Color(red: 0.20, green: 0.84, blue: 0.35)
+            return .green
         }
     }
 
     var body: some View {
-        if widgetFamily == .systemMedium || widgetFamily == .systemLarge {
-            // Horizontal layout for medium and large widgets
-            HStack(spacing: 20) {
-                singleRingCard
-                
-                if let percentage = entry.percentage {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Canvas Battery")
-                            .font(.headline)
-                            .foregroundStyle(.white)
-                            .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
-                            .widgetAccentable()
-                        
-                        Text("\(percentage)%")
-                            .font(.system(size: 48, weight: .bold, design: .rounded))
-                            .foregroundStyle(.white)
-                            .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 2)
-                            .widgetAccentable()
-                        
-                        if widgetFamily == .systemLarge {
+        GeometryReader { geometry in
+            if widgetFamily == .systemMedium || widgetFamily == .systemLarge {
+                // Horizontal layout for medium and large widgets
+                HStack(alignment: .top, spacing: geometry.size.width * 0.05) {
+                    compactRingAndPercentage(in: geometry)
+                    
+                    if widgetFamily == .systemLarge {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Canvas Battery")
+                                .font(.headline)
+                                .foregroundStyle(.white)
+                                .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+                                .widgetAccentable()
+                            
                             Spacer()
+                            
                             Text("Last updated: \(entry.date.formatted(date: .omitted, time: .shortened))")
                                 .font(.caption)
-                                .foregroundStyle(.white.opacity(0.9))
+                                .foregroundStyle(.white.opacity(0.7))
                                 .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
                         }
                     }
+                    
+                    Spacer()
                 }
-                
-                Spacer()
-            }
-            .padding()
-            .containerBackground(for: .widget) {
-                // Liquid Glass transparent background
-                Color.clear
-            }
-        } else {
-            // Original small widget layout
-            ZStack {
-                singleRingCard
-            }
-            .containerBackground(for: .widget) {
-                // Liquid Glass transparent background
-                Color.clear
+                .padding(10)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .containerBackground(for: .widget) {
+                    Color.clear
+                }
+            } else {
+                // Vertical layout for small widget - aligned to top left
+                compactRingAndPercentage(in: geometry)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .containerBackground(for: .widget) {
+                        Color.clear
+                    }
             }
         }
     }
 
-    private var singleRingCard: some View {
-        ZStack {
-            // Cercle de fond avec un effet de glass
-            Circle()
-                .stroke(Color.white.opacity(0.3), lineWidth: ringStrokeWidth)
-                .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 1)
+    private func compactRingAndPercentage(in geometry: GeometryProxy) -> some View {
+        let currentRingSize = ringSize(in: geometry)
+        let strokeWidth = ringStrokeWidth(for: currentRingSize)
+        
+        return VStack(alignment: .leading, spacing: 0) {
+            // Ring with battery icon
+            ZStack {
+                // Background circle
+                Circle()
+                    .stroke(Color.white.opacity(0.25), lineWidth: strokeWidth)
 
-            // Cercle de progression
-            Circle()
-                .trim(from: 0, to: batteryProgress)
-                .stroke(
-                    batteryRingColor,
-                    style: StrokeStyle(lineWidth: ringStrokeWidth, lineCap: .round)
-                )
-                .rotationEffect(.degrees(-90))
-                .shadow(color: batteryRingColor.opacity(0.5), radius: 4, x: 0, y: 0)
-                .widgetAccentable() // Makes the progress ring accent in tinted mode
+                // Progress circle
+                Circle()
+                    .trim(from: 0, to: batteryProgress)
+                    .stroke(
+                        batteryRingColor,
+                        style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round)
+                    )
+                    .rotationEffect(.degrees(-90))
+                    .widgetAccentable()
 
-            // Icône avec une ombre pour plus de visibilité
-            Image(systemName: "person.crop.artframe")
-                .font(.system(size: ringSize * 0.34, weight: .medium))
-                .foregroundStyle(Color.white)
-                .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
-                .widgetAccentable() // Makes the icon accent in tinted mode
+                // Battery icon
+                Image(systemName: "photo.on.rectangle.angled")
+                    .font(.system(size: currentRingSize * 0.35, weight: .regular))
+                    .foregroundStyle(Color.white)
+                    .widgetAccentable()
+            }
+            .frame(width: currentRingSize, height: currentRingSize)
+            
+            Spacer()
+            Spacer()
+
+            
+            // Percentage text
+            if let percentage = entry.percentage {
+                Text("\(percentage)%")
+                    .font(.system(size: widgetFamily == .systemSmall ? geometry.size.width * 0.32 : geometry.size.height * 0.43, weight: .regular, design: .default))
+                    .foregroundStyle(.white)
+                    .widgetAccentable()
+            } else {
+                Text("--")
+                    .font(.system(size: widgetFamily == .systemSmall ? geometry.size.width * 0.28 : geometry.size.height * 0.33, weight: .regular, design: .default))
+                    .foregroundStyle(.white.opacity(0.5))
+            }
         }
-        .frame(width: ringSize, height: ringSize)
-        .padding(26)
+        .padding(5)
     }
 }
 
