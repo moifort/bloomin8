@@ -13,11 +13,14 @@ output
  Xcode user state
 *.xcuserstate
 
+
 # Xcode user data
 /ios/Canvas/Canvas.xcodeproj/xcuserdata
 
+ios/Canvas/Canvas.xcodeproj/project.xcworkspace/xcuserdata
 # Derived data
 DerivedData/
 
 # SwiftPM
 .build/
+.derived/
