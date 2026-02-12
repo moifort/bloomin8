@@ -194,7 +194,14 @@ private struct CanvasBatteryProvider: TimelineProvider {
             return nil
         }
 
-        let screenSize = UIScreen.main.bounds.size
+        // Calculate screen size from the screenshot dimensions and scale
+        // The screenshot is a full-screen capture, so we can derive the logical size
+        let scale = screenshot.scale
+        let screenSize = CGSize(
+            width: CGFloat(sourceCGImage.width) / scale,
+            height: CGFloat(sourceCGImage.height) / scale
+        )
+        
         guard screenSize.width > 0, screenSize.height > 0 else {
             return nil
         }
