@@ -24,8 +24,11 @@ enum ImageProcessor {
         let normalizedImage = normalizeOrientation(image)
         let orientation: UploadOrientation =
             normalizedImage.size.width > normalizedImage.size.height ? .landscape : .portrait
+        
+        // Pour les images paysage, on les crop au centre en mode portrait
+        // au lieu de les faire pivoter
         let imageForRendering =
-            orientation == .landscape ? rotateClockwise(normalizedImage) : normalizedImage
+            orientation == .landscape ? centerCropToPortrait(normalizedImage) : normalizedImage
 
         guard let jpegData = renderAspectFillJPEG(
             imageForRendering,
@@ -91,25 +94,44 @@ enum ImageProcessor {
         }
     }
 
-    private static func rotateClockwise(_ image: UIImage) -> UIImage {
-        let rotatedSize = CGSize(width: image.size.height, height: image.size.width)
+    private static func centerCropToPortrait(_ image: UIImage) -> UIImage {
+        // L'image est en mode paysage (largeur > hauteur)
+        // On veut la cropper au centre pour obtenir un format portrait
+        
+        let sourceSize = image.size
+        let targetAspectRatio = targetSize.width / targetSize.height // 1200/1600 = 0.75
+        
+        // Calculer la nouvelle largeur pour obtenir le bon ratio portrait
+        let croppedWidth = sourceSize.height * targetAspectRatio
+        
+        // Centrer le crop horizontalement
+        let cropX = (sourceSize.width - croppedWidth) / 2
+        let cropRect = CGRect(
+            x: cropX,
+            y: 0,
+            width: croppedWidth,
+            height: sourceSize.height
+        )
+        
         let rendererFormat = UIGraphicsImageRendererFormat.default()
         rendererFormat.scale = 1
         rendererFormat.opaque = true
-
-        let renderer = UIGraphicsImageRenderer(size: rotatedSize, format: rendererFormat)
+        
+        let croppedSize = CGSize(width: croppedWidth, height: sourceSize.height)
+        let renderer = UIGraphicsImageRenderer(size: croppedSize, format: rendererFormat)
+        
         return renderer.image { context in
             let cgContext = context.cgContext
-            cgContext.translateBy(x: rotatedSize.width / 2, y: rotatedSize.height / 2)
-            cgContext.rotate(by: .pi / 2)
-
-            let drawRect = CGRect(
-                x: -image.size.width / 2,
-                y: -image.size.height / 2,
-                width: image.size.width,
-                height: image.size.height
-            )
-            image.draw(in: drawRect)
+            
+            // Dessiner seulement la partie croppée de l'image
+            if let cgImage = image.cgImage?.cropping(to: cropRect) {
+                let croppedImage = UIImage(cgImage: cgImage, scale: 1, orientation: .up)
+                croppedImage.draw(in: CGRect(origin: .zero, size: croppedSize))
+            } else {
+                // Fallback: dessiner l'image complète avec un offset
+                cgContext.translateBy(x: -cropX, y: 0)
+                image.draw(in: CGRect(origin: .zero, size: sourceSize))
+            }
         }
     }
 }

@@ -12,6 +12,9 @@
       <excludeFolder url="file://$MODULE_DIR$/data/images" />
       <excludeFolder url="file://$MODULE_DIR$/ios/Canvas/Canvas.xcodeproj/project.xcworkspace/xcuserdata" />
       <excludeFolder url="file://$MODULE_DIR$/output" />
+      <excludeFolder url="file://$MODULE_DIR$/.build" />
+      <excludeFolder url="file://$MODULE_DIR$/.derived" />
+      <excludeFolder url="file://$MODULE_DIR$/ios/Canvas/Canvas.xcodeproj/xcuserdata" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
