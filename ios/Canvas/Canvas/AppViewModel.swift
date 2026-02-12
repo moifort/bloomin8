@@ -37,7 +37,7 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    private let maxConcurrentUploads = 2
+    private let maxConcurrentUploads = 5
     private let userDefaults: UserDefaults
     private let sharedDefaults: UserDefaults?
 
