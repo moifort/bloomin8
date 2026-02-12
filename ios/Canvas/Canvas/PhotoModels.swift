@@ -1,12 +1,12 @@
 import Foundation
 
-struct PhotoAlbum: Identifiable, Hashable {
+struct PhotoAlbum: Identifiable, Hashable, Sendable {
     let id: String
     let title: String
     let photoCount: Int
 }
 
-struct UploadProgress {
+struct UploadProgress: Sendable {
     var total: Int
     var processed: Int
     var uploaded: Int
@@ -31,9 +31,9 @@ enum AppError: LocalizedError {
         case .invalidServerURL:
             return "URL serveur invalide."
         case .missingAlbumSelection:
-            return "Selectionne un album."
+            return "Sélectionnez un album."
         case .resizeFailed:
-            return "Impossible de convertir l'image en JPEG 1200x1600."
+            return "Impossible de convertir l'image en JPEG 1200×1600."
         case .noPhotosInAlbum:
             return "Cet album ne contient pas de photos."
         }

@@ -430,7 +430,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 46C337T7YN;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = CanvasBatteryWidget-Info.plist;
+				INFOPLIST_FILE = "CanvasBatteryWidget-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -461,7 +461,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 46C337T7YN;
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = CanvasBatteryWidget-Info.plist;
+				INFOPLIST_FILE = "CanvasBatteryWidget-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

@@ -1,9 +1,10 @@
 import Foundation
-import Combine
+import Observation
 import Photos
 
 @MainActor
-final class AppViewModel: ObservableObject {
+@Observable
+final class AppViewModel {
     private static let serverURLDefaultsKey = "canvas.server.url"
     private static let canvasURLDefaultsKey = "canvas.device.url"
     private static let batteryPercentageDefaultsKey = "canvas.battery.percentage"
@@ -11,27 +12,27 @@ final class AppViewModel: ObservableObject {
     private static let defaultServerURL = "http://192.168.0.165:3000"
     private static let defaultCanvasURL = "http://192.168.0.174"
 
-    @Published private(set) var authorizationStatus: PHAuthorizationStatus = PhotoLibraryService.authorizationStatus()
-    @Published private(set) var albums: [PhotoAlbum] = []
-    @Published var selectedAlbumId: String?
-    @Published var serverURL: String {
+    private(set) var authorizationStatus: PHAuthorizationStatus = PhotoLibraryService.authorizationStatus()
+    private(set) var albums: [PhotoAlbum] = []
+    var selectedAlbumId: String?
+    var serverURL: String {
         didSet {
             persistServerURL()
         }
     }
-    @Published var canvasURL: String {
+    var canvasURL: String {
         didSet {
             persistCanvasURL()
         }
     }
-    @Published var cronIntervalInHours: String = "3"
+    var cronIntervalInHours: String = "3"
 
-    @Published private(set) var isUploading = false
-    @Published private(set) var isStartingPlaylist = false
-    @Published private(set) var progress = UploadProgress.empty
-    @Published private(set) var statusText: String = ""
-    @Published private(set) var errorText: String?
-    @Published private(set) var canvasBatteryPercentage: Int? {
+    private(set) var isUploading = false
+    private(set) var isStartingPlaylist = false
+    private(set) var progress = UploadProgress.empty
+    private(set) var statusText: String = ""
+    private(set) var errorText: String?
+    private(set) var canvasBatteryPercentage: Int? {
         didSet {
             persistCanvasBatteryPercentage()
         }

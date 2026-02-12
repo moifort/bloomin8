@@ -1,11 +1,11 @@
 import UIKit
 
-enum UploadOrientation: String {
+enum UploadOrientation: String, Sendable {
     case portrait = "P"
     case landscape = "L"
 }
 
-struct ProcessedImage {
+struct ProcessedImage: Sendable {
     let jpegData: Data
     let orientation: UploadOrientation
 }
@@ -68,6 +68,7 @@ enum ImageProcessor {
         let rendererFormat = UIGraphicsImageRendererFormat.default()
         rendererFormat.scale = 1
         rendererFormat.opaque = true
+        rendererFormat.preferredRange = .standard
 
         let renderer = UIGraphicsImageRenderer(size: targetSize, format: rendererFormat)
         let output = renderer.image { context in
@@ -87,6 +88,7 @@ enum ImageProcessor {
         let rendererFormat = UIGraphicsImageRendererFormat.default()
         rendererFormat.scale = 1
         rendererFormat.opaque = true
+        rendererFormat.preferredRange = .standard
 
         let renderer = UIGraphicsImageRenderer(size: image.size, format: rendererFormat)
         return renderer.image { _ in
@@ -106,32 +108,24 @@ enum ImageProcessor {
         
         // Centrer le crop horizontalement
         let cropX = (sourceSize.width - croppedWidth) / 2
-        let cropRect = CGRect(
-            x: cropX,
-            y: 0,
-            width: croppedWidth,
-            height: sourceSize.height
-        )
         
-        let rendererFormat = UIGraphicsImageRendererFormat.default()
-        rendererFormat.scale = 1
-        rendererFormat.opaque = true
-        
-        let croppedSize = CGSize(width: croppedWidth, height: sourceSize.height)
-        let renderer = UIGraphicsImageRenderer(size: croppedSize, format: rendererFormat)
-        
-        return renderer.image { context in
-            let cgContext = context.cgContext
-            
-            // Dessiner seulement la partie croppée de l'image
-            if let cgImage = image.cgImage?.cropping(to: cropRect) {
-                let croppedImage = UIImage(cgImage: cgImage, scale: 1, orientation: .up)
-                croppedImage.draw(in: CGRect(origin: .zero, size: croppedSize))
-            } else {
-                // Fallback: dessiner l'image complète avec un offset
-                cgContext.translateBy(x: -cropX, y: 0)
-                image.draw(in: CGRect(origin: .zero, size: sourceSize))
-            }
+        guard let cgImage = image.cgImage else {
+            return image
         }
+        
+        // Convertir en coordonnées de pixel
+        let scale = cgImage.width / Int(sourceSize.width)
+        let pixelCropRect = CGRect(
+            x: cropX * CGFloat(scale),
+            y: 0,
+            width: croppedWidth * CGFloat(scale),
+            height: sourceSize.height * CGFloat(scale)
+        ).integral
+        
+        guard let croppedCGImage = cgImage.cropping(to: pixelCropRect) else {
+            return image
+        }
+        
+        return UIImage(cgImage: croppedCGImage, scale: 1, orientation: .up)
     }
 }
