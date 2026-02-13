@@ -164,9 +164,7 @@ private struct CanvasBatteryProvider: TimelineProvider {
 
         switch payload {
         case let .batteryData(batteryData):
-            let dateFormatter = ISO8601DateFormatter()
-                dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-                let chargeDate = batteryData.lastFullChargeDate.flatMap { dateFormatter.date(from: $0) }
+            let chargeDate = batteryData.lastFullChargeDate.flatMap { ISO8601DateFormatter().date(from: $0) }
             return (batteryData.percentage, chargeDate)
         case .unavailable:
             return nil
@@ -207,7 +205,7 @@ private struct CanvasBatteryProvider: TimelineProvider {
             width: CGFloat(sourceCGImage.width) / scale,
             height: CGFloat(sourceCGImage.height) / scale
         )
-        
+
         guard screenSize.width > 0, screenSize.height > 0 else {
             return nil
         }
@@ -351,12 +349,12 @@ private struct CanvasBatteryWidgetView: View {
             }
         }
     }
-    
+
     // Equivalent de "display: flex; flex-direction: column/row"
     @ViewBuilder
     private func widgetContent(in geometry: GeometryProxy) -> some View {
         let horizontalGap = geometry.size.width * 0.03
-        
+
         Group {
             if widgetFamily == .systemSmall {
                 // flex-direction: column avec distribution verticale
@@ -365,7 +363,7 @@ private struct CanvasBatteryWidgetView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         batteryRingView(size: ringSize(in: geometry))
                     }
-                    
+
                     // Stack pour le pourcentage
                     VStack(alignment: .leading, spacing: 0) {
                         batteryPercentageView(in: geometry)
@@ -381,13 +379,13 @@ private struct CanvasBatteryWidgetView: View {
                         VStack(alignment: .leading, spacing: 0) {
                             batteryRingView(size: ringSize(in: geometry))
                         }
-                        
-                        
+
+
                         VStack(alignment: .leading, spacing: 0) {
                             batteryPercentageView(in: geometry)
                         }
                     }
-                    
+
                     if widgetFamily == .systemLarge {
                         VStack(alignment: .leading, spacing: 0) {
                             widgetTitleView
@@ -399,13 +397,13 @@ private struct CanvasBatteryWidgetView: View {
             }
         }
     }
-    
+
     // Indicateur de jours - position absolute (top-right)
     private var daysIndicator: some View {
         Group {
             if let lastChargeDate = entry.lastFullChargeDate {
                 let days = Calendar.current.dateComponents([.day], from: lastChargeDate, to: Date()).day ?? 0
-                
+
                 Text("\(days)j")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.7))
@@ -413,16 +411,16 @@ private struct CanvasBatteryWidgetView: View {
             }
         }
     }
-    
+
     // Composant: Ring de batterie
     private func batteryRingView(size: CGFloat) -> some View {
         let strokeWidth = ringStrokeWidth(for: size)
-        
+
         return ZStack {
             // Background circle
             Circle()
                 .stroke(Color.white.opacity(0.25), lineWidth: strokeWidth)
-            
+
             // Progress circle
             Circle()
                 .trim(from: 0, to: batteryProgress)
@@ -432,7 +430,7 @@ private struct CanvasBatteryWidgetView: View {
                 )
                 .rotationEffect(.degrees(-90))
                 .widgetAccentable()
-            
+
             // Battery icon
             Image(systemName: "photo.on.rectangle.angled")
                 .font(.system(size: size * 0.35, weight: .regular))
@@ -441,11 +439,11 @@ private struct CanvasBatteryWidgetView: View {
         }
         .frame(width: size, height: size)
     }
-    
+
     // Composant: Texte du pourcentage
     private func batteryPercentageView(in geometry: GeometryProxy) -> some View {
         let fontSize = geometry.size.height * 0.40
-        
+
         return Group {
             if let percentage = entry.percentage {
                 Text("\(percentage)%")
@@ -460,7 +458,7 @@ private struct CanvasBatteryWidgetView: View {
             }
         }
     }
-    
+
     // Composant: Titre du widget
     private var widgetTitleView: some View {
         Text("Canvas Battery")
