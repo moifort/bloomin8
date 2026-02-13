@@ -1,5 +1,5 @@
 import { CanvasDate } from '~/canvas/primitives'
-import type { BatteryPercentage } from '~/canvas/types'
+import type { Battery, Percentage } from '~/canvas/types'
 import type { CanvasUrl, ServerUrl } from '~/config/types'
 import type { ImageUrl } from '~/images/types'
 
@@ -51,15 +51,24 @@ export namespace Canvas {
     data: { next_cron_time: null },
   })
 
-  export const saveBattery = async (level: BatteryPercentage) => {
+  export const saveBattery = async (level: Percentage) => {
     const storage = useStorage('canvas')
-    await storage.setItem<BatteryPercentage>('battery', level)
+    const currentBattery = await storage.getItem<Battery>('battery')
+    const previousPercentage = currentBattery?.percentage ?? 0
+    const isFullyCharged = level === 100 && previousPercentage < 100
+    const battery = {
+      percentage: level,
+      lastFullChargeDate: isFullyCharged
+        ? new Date()
+        : (currentBattery?.lastFullChargeDate ?? null),
+    }
+    await storage.setItem<Battery>('battery', battery)
   }
 
   export const getBattery = async () => {
     const storage = useStorage('canvas')
-    const level = await storage.getItem<BatteryPercentage>('battery')
-    if (!level) return 'battery-unavailable' as const
-    return level
+    const battery = await storage.getItem<Battery>('battery')
+    if (!battery) return 'battery-unavailable' as const
+    return battery
   }
 }

@@ -226,29 +226,34 @@ struct ImageService {
 }
 
 struct CanvasStatusService {
-    struct ResponseEnvelope: Decodable {
-        struct LegacyPayload: Decodable {
-            let percentage: Int
-        }
+    struct BatteryData: Decodable {
+        let percentage: Int
+        let lastFullChargeDate: String?
+    }
 
+    struct ResponseEnvelope: Decodable {
         enum Payload: Decodable {
-            case percentage(Int)
+            case batteryData(BatteryData)
             case unavailable
 
             init(from decoder: Decoder) throws {
                 let container = try decoder.singleValueContainer()
-                if let rawPercentage = try? container.decode(Int.self) {
-                    self = .percentage(rawPercentage)
+
+                if let batteryData = try? container.decode(BatteryData.self) {
+                    self = .batteryData(batteryData)
                     return
                 }
+
+                if let rawPercentage = try? container.decode(Int.self) {
+                    self = .batteryData(BatteryData(percentage: rawPercentage, lastFullChargeDate: nil))
+                    return
+                }
+
                 if let rawStatus = try? container.decode(String.self), rawStatus == "battery-unavailable" {
                     self = .unavailable
                     return
                 }
-                if let legacyPayload = try? container.decode(LegacyPayload.self) {
-                    self = .percentage(legacyPayload.percentage)
-                    return
-                }
+
                 throw DecodingError.dataCorruptedError(
                     in: container,
                     debugDescription: "Battery payload format is not supported."
@@ -319,8 +324,50 @@ struct CanvasStatusService {
                 return nil
             }
             switch payload {
-            case let .percentage(value):
-                return value
+            case let .batteryData(data):
+                return data.percentage
+            case .unavailable:
+                return nil
+            }
+        }
+
+        let decodedMessage = (try? JSONDecoder().decode(ResponseEnvelope.self, from: data))?.message
+        let fallbackMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+        throw CanvasStatusError.server(statusCode: http.statusCode, message: decodedMessage ?? fallbackMessage)
+    }
+
+    func getBatteryData() async throws -> BatteryData? {
+        let endpoint = baseURL
+            .appendingPathComponent("canvas")
+            .appendingPathComponent("battery")
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 15
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw CanvasStatusError.transport(error)
+        }
+
+        guard let http = response as? HTTPURLResponse else {
+            throw CanvasStatusError.invalidHTTPResponse
+        }
+
+        if (200 ..< 300).contains(http.statusCode) {
+            let envelope = try? JSONDecoder().decode(ResponseEnvelope.self, from: data)
+            guard let decodedEnvelope = envelope else {
+                throw CanvasStatusError.invalidPayload
+            }
+            guard let payload = decodedEnvelope.data else {
+                return nil
+            }
+            switch payload {
+            case let .batteryData(batteryData):
+                return batteryData
             case .unavailable:
                 return nil
             }

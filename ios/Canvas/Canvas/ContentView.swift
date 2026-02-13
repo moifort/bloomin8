@@ -4,7 +4,7 @@ struct ContentView: View {
     @State private var viewModel = AppViewModel()
     @Environment(\.scenePhase) private var scenePhase
     @State private var showingError = false
-    
+
     var body: some View {
         NavigationStack {
             Form {
@@ -12,7 +12,6 @@ struct ContentView: View {
                 batterySection
                 photoSection
             }
-            .navigationTitle("Canvas")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -81,13 +80,11 @@ struct ContentView: View {
             } label: {
                 Label("Intervalle (heures)", systemImage: "clock")
             }
-        } header: {
-            Text("Configuration")
         }
     }
-    
+
     private var batterySection: some View {
-        Section("État du Canvas") {
+        Section {
             HStack {
                 Label {
                     Text("Batterie")
@@ -95,13 +92,26 @@ struct ContentView: View {
                     Image(systemName: canvasBatteryIconName)
                         .foregroundStyle(canvasBatteryColor)
                 }
-                
+
                 Spacer()
-                
-                Text(canvasBatteryText)
+
+                Text(canvasBatteryPercentageText)
                     .foregroundStyle(canvasBatteryColor)
                     .fontWeight(.semibold)
                     .contentTransition(.numericText())
+            }
+
+            if let days = viewModel.lastFullChargeDays {
+                LabeledContent {
+                    Text("\(days) jour\(days > 1 ? "s" : "")")
+                        .foregroundStyle(.secondary)
+                } label: {
+                    Label("Dernière charge complète", systemImage: "clock.arrow.circlepath")
+                }
+            }
+        } footer: {
+            if let percentage = viewModel.canvasBatteryPercentage, percentage < 10 {
+                Text("⚠️ Batterie faible, pensez à recharger le Canvas")
             }
         }
     }
@@ -128,7 +138,7 @@ struct ContentView: View {
                     } label: {
                         Label("Album", systemImage: "photo.stack")
                     }
-                    
+
                     if viewModel.isUploading {
                         VStack(spacing: 12) {
                             ProgressView(value: viewModel.progress.fractionCompleted) {
@@ -139,20 +149,20 @@ struct ContentView: View {
                                 }
                                 .font(.subheadline)
                             }
-                            
+
                             HStack {
                                 Label("\(viewModel.progress.uploaded)", systemImage: "checkmark.circle.fill")
                                     .foregroundStyle(.green)
-                                
+
                                 Spacer()
-                                
+
                                 if viewModel.progress.failed > 0 {
                                     Label("\(viewModel.progress.failed)", systemImage: "xmark.circle.fill")
                                         .foregroundStyle(.red)
                                 }
                             }
                             .font(.caption)
-                            
+
                             Button("Annuler", role: .destructive) {
                                 viewModel.cancelUpload()
                             }
@@ -160,7 +170,7 @@ struct ContentView: View {
                             .controlSize(.small)
                         }
                     }
-                    
+
                     if !viewModel.statusText.isEmpty {
                         Label {
                             Text(viewModel.statusText)
@@ -183,17 +193,15 @@ struct ContentView: View {
                     .buttonStyle(.borderedProminent)
                 }
             }
-        } header: {
-            Text("Photos")
         }
-        
+
         if viewModel.isPhotoAccessGranted && !viewModel.albums.isEmpty && !viewModel.isUploading {
             Section {
                 Button("Uploader l'album") {
                     viewModel.startUpload()
                 }
                 .disabled(!viewModel.canStartUpload)
-                
+
                 Button(viewModel.isStartingPlaylist ? "Démarrage..." : "Démarrer la playlist") {
                     viewModel.startPlaylist()
                 }
@@ -212,10 +220,11 @@ struct ContentView: View {
         )
     }
 
-    private var canvasBatteryText: String {
+    private var canvasBatteryPercentageText: String {
         guard let percentage = viewModel.canvasBatteryPercentage else {
             return "Indisponible"
         }
+
         return "\(percentage)%"
     }
 
@@ -237,12 +246,12 @@ struct ContentView: View {
             return "battery.100percent"
         }
     }
-    
+
     private var canvasBatteryColor: Color {
         guard let percentage = viewModel.canvasBatteryPercentage else {
             return .secondary
         }
-        
+
         switch percentage {
         case 0...20:
             return .red
@@ -253,7 +262,28 @@ struct ContentView: View {
         }
     }
 }
-#Preview {
+
+#Preview("Default") {
     ContentView()
 }
 
+@MainActor
+@Observable
+final class PreviewAppViewModel {
+    var canvasBatteryPercentage: Int? = 9
+    var lastFullChargeDays: Int? = 3
+    var serverURL: String = "http://192.168.0.165:3000"
+    var canvasURL: String = "http://192.168.0.174"
+    var cronIntervalInHours: String = "3"
+    var isPhotoAccessGranted: Bool = true
+    var albums: [PhotoAlbum] = [
+        PhotoAlbum(id: "1", title: "Vacances", photoCount: 42),
+        PhotoAlbum(id: "2", title: "Famille", photoCount: 128),
+        PhotoAlbum(id: "3", title: "Favoris", photoCount: 18)
+    ]
+    var selectedAlbumId: String? = "1"
+    var isUploading: Bool = false
+    var isStartingPlaylist: Bool = false
+    var progress: UploadProgress = .empty
+    var statusText: String = "Prêt à uploader"
+}
