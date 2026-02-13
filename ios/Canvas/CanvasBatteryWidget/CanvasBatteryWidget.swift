@@ -164,7 +164,9 @@ private struct CanvasBatteryProvider: TimelineProvider {
 
         switch payload {
         case let .batteryData(batteryData):
-            let chargeDate = batteryData.lastFullChargeDate.flatMap { ISO8601DateFormatter().date(from: $0) }
+            let dateFormatter = ISO8601DateFormatter()
+                dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                let chargeDate = batteryData.lastFullChargeDate.flatMap { dateFormatter.date(from: $0) }
             return (batteryData.percentage, chargeDate)
         case .unavailable:
             return nil

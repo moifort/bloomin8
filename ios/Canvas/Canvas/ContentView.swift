@@ -17,6 +17,7 @@ struct ContentView: View {
                     Button {
                         Task {
                             await viewModel.refreshCanvasBattery()
+                            viewModel.reloadAlbums()
                         }
                     } label: {
                         Label("Actualiser", systemImage: "arrow.clockwise")
@@ -32,6 +33,7 @@ struct ContentView: View {
             guard newPhase == .active else { return }
             Task {
                 await viewModel.refreshCanvasBattery()
+                viewModel.reloadAlbums()
             }
         }
         .onChange(of: viewModel.serverURL) { _, _ in
@@ -74,11 +76,10 @@ struct ContentView: View {
             }
 
             LabeledContent {
-                TextField("3", text: $viewModel.cronIntervalInHours)
-                    .keyboardType(.numberPad)
-                    .multilineTextAlignment(.trailing)
+                Text("\(viewModel.cronIntervalInHours)h")
+                    .foregroundStyle(.secondary)
             } label: {
-                Label("Intervalle (heures)", systemImage: "clock")
+                Label("Intervalle", systemImage: "clock")
             }
         }
     }
