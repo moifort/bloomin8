@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(bun:*)",
+      "WebSearch",
+      "Bash(curl:*)"
+    ]
+  },
+  "outputStyle": "Explanatory",
+  "language": "french",
+  "plansDirectory": "./.claude/plans"
+}

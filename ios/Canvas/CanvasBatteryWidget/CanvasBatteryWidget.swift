@@ -6,6 +6,7 @@ private enum CanvasWidgetStore {
     static let appGroupSuiteName = "group.polyforms.canvas"
     static let serverURLKey = "canvas.server.url"
     static let batteryPercentageKey = "canvas.battery.percentage"
+    static let lastFullChargeDateKey = "canvas.battery.last-full-charge-date"
     static let widgetBackgroundPositionKey = "canvas.widget.background.position"
     static let widgetSafeAreaTopKey = "canvas.widget.safe-area.top"
     static let widgetBackgroundImageFilename = "canvas-widget-background.png"
@@ -42,29 +43,30 @@ private enum WidgetBackgroundPosition: String {
 }
 
 private struct CanvasBatteryResponseEnvelope: Decodable {
-    struct LegacyPayload: Decodable {
+    struct BatteryData: Decodable {
         let percentage: Int
+        let lastFullChargeDate: String?
     }
 
     enum Payload: Decodable {
-        case percentage(Int)
+        case batteryData(BatteryData)
         case unavailable
 
         init(from decoder: Decoder) throws {
             let container = try decoder.singleValueContainer()
 
+            if let batteryData = try? container.decode(BatteryData.self) {
+                self = .batteryData(batteryData)
+                return
+            }
+
             if let rawPercentage = try? container.decode(Int.self) {
-                self = .percentage(rawPercentage)
+                self = .batteryData(BatteryData(percentage: rawPercentage, lastFullChargeDate: nil))
                 return
             }
 
             if let rawStatus = try? container.decode(String.self), rawStatus == "battery-unavailable" {
                 self = .unavailable
-                return
-            }
-
-            if let legacyPayload = try? container.decode(LegacyPayload.self) {
-                self = .percentage(legacyPayload.percentage)
                 return
             }
 
@@ -81,12 +83,12 @@ private struct CanvasBatteryResponseEnvelope: Decodable {
 private struct CanvasBatteryEntry: TimelineEntry {
     let date: Date
     let percentage: Int?
-    let backgroundImage: UIImage?
+    let lastFullChargeDate: Date?
 }
 
 private struct CanvasBatteryProvider: TimelineProvider {
     func placeholder(in context: Context) -> CanvasBatteryEntry {
-        CanvasBatteryEntry(date: Date(), percentage: 72, backgroundImage: nil)
+        CanvasBatteryEntry(date: Date(), percentage: 72, lastFullChargeDate: nil)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (CanvasBatteryEntry) -> Void) {
@@ -104,25 +106,26 @@ private struct CanvasBatteryProvider: TimelineProvider {
     }
 
     private func buildEntry(displaySize: CGSize) async -> CanvasBatteryEntry {
-        let percentage = await resolveBatteryPercentage()
-        let backgroundImage = resolveBackgroundImage(displaySize: displaySize)
-        return CanvasBatteryEntry(date: Date(), percentage: percentage, backgroundImage: backgroundImage)
+        let (percentage, lastChargeDate) = await resolveBatteryData()
+        return CanvasBatteryEntry(date: Date(), percentage: percentage, lastFullChargeDate: lastChargeDate)
     }
 
-    private func resolveBatteryPercentage() async -> Int? {
-        if let cachedBattery = readCachedBatteryPercentage() {
-            return cachedBattery
+    private func resolveBatteryData() async -> (percentage: Int?, lastChargeDate: Date?) {
+        let cachedPercentage = readCachedBatteryPercentage()
+        let cachedChargeDate = readCachedLastFullChargeDate()
+
+        guard let (fetchedPercentage, fetchedChargeDate) = await fetchBatteryData() else {
+            return (cachedPercentage, cachedChargeDate)
         }
 
-        guard let fetchedBattery = await fetchBatteryPercentage() else {
-            return nil
+        persistBatteryPercentage(fetchedPercentage)
+        if let chargeDate = fetchedChargeDate {
+            persistLastFullChargeDate(chargeDate)
         }
-
-        persistBatteryPercentage(fetchedBattery)
-        return fetchedBattery
+        return (fetchedPercentage, fetchedChargeDate ?? cachedChargeDate)
     }
 
-    private func fetchBatteryPercentage() async -> Int? {
+    private func fetchBatteryData() async -> (percentage: Int, lastChargeDate: Date?)? {
         guard
             let baseURL = URL(string: readServerURL()),
             ["http", "https"].contains(baseURL.scheme?.lowercased())
@@ -160,8 +163,9 @@ private struct CanvasBatteryProvider: TimelineProvider {
         }
 
         switch payload {
-        case let .percentage(value):
-            return value
+        case let .batteryData(batteryData):
+            let chargeDate = batteryData.lastFullChargeDate.flatMap { ISO8601DateFormatter().date(from: $0) }
+            return (batteryData.percentage, chargeDate)
         case .unavailable:
             return nil
         }
@@ -254,6 +258,18 @@ private struct CanvasBatteryProvider: TimelineProvider {
         UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.set(percentage, forKey: CanvasWidgetStore.batteryPercentageKey)
     }
 
+    private func readCachedLastFullChargeDate() -> Date? {
+        guard let timestamp = UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.object(forKey: CanvasWidgetStore.lastFullChargeDateKey) as? Double else {
+            return nil
+        }
+        return Date(timeIntervalSince1970: timestamp)
+    }
+
+    private func persistLastFullChargeDate(_ date: Date) {
+        let timestamp = date.timeIntervalSince1970
+        UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.set(timestamp, forKey: CanvasWidgetStore.lastFullChargeDateKey)
+    }
+
     private func readBackgroundPosition() -> WidgetBackgroundPosition? {
         let rawValue = UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.string(forKey: CanvasWidgetStore.widgetBackgroundPositionKey)
         return WidgetBackgroundPosition(rawValue: rawValue ?? "")
@@ -288,11 +304,11 @@ private struct CanvasBatteryWidgetView: View {
     private func ringSize(in geometry: GeometryProxy) -> CGFloat {
         switch widgetFamily {
         case .systemSmall:
-            return geometry.size.height * 0.52  // ~42% de la largeur
+            return geometry.size.height * 0.52
         case .systemMedium:
-            return geometry.size.height * 0.50  // ~50% de la hauteur
+            return geometry.size.height * 0.50
         case .systemLarge:
-            return geometry.size.height * 0.27  // ~27% de la hauteur
+            return geometry.size.height * 0.27
         default:
             return geometry.size.height * 0.42
         }
@@ -324,93 +340,135 @@ private struct CanvasBatteryWidgetView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            if widgetFamily == .systemMedium || widgetFamily == .systemLarge {
-                // Horizontal layout for medium and large widgets
-                HStack(alignment: .top, spacing: geometry.size.width * 0.05) {
-                    compactRingAndPercentage(in: geometry)
+            ZStack(alignment: .topTrailing) {
+                widgetContent(in: geometry)
+                daysIndicator
+            }
+            .containerBackground(for: .widget) {
+                Color.clear
+            }
+        }
+    }
+    
+    // Equivalent de "display: flex; flex-direction: column/row"
+    @ViewBuilder
+    private func widgetContent(in geometry: GeometryProxy) -> some View {
+        let horizontalGap = geometry.size.width * 0.03
+        
+        Group {
+            if widgetFamily == .systemSmall {
+                // flex-direction: column avec distribution verticale
+                VStack(alignment: .leading, spacing: 0) {
+                    // Stack pour le ring
+                    VStack(alignment: .leading, spacing: 0) {
+                        batteryRingView(size: ringSize(in: geometry))
+                    }
                     
-                    if widgetFamily == .systemLarge {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Canvas Battery")
-                                .font(.headline)
-                                .foregroundStyle(.white)
-                                .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
-                                .widgetAccentable()
-                            
-                            Spacer()
-                            
-                            Text("Last updated: \(entry.date.formatted(date: .omitted, time: .shortened))")
-                                .font(.caption)
-                                .foregroundStyle(.white.opacity(0.7))
-                                .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
+                    // Stack pour le pourcentage
+                    VStack(alignment: .leading, spacing: 0) {
+                        batteryPercentageView(in: geometry)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            } else {
+                // flex-direction: row
+                HStack(alignment: .top, spacing: horizontalGap) {
+                    // Colonne principale
+                    VStack(alignment: .leading, spacing: 0) {
+                        // Stack pour le ring
+                        VStack(alignment: .leading, spacing: 0) {
+                            batteryRingView(size: ringSize(in: geometry))
+                        }
+                        
+                        
+                        VStack(alignment: .leading, spacing: 0) {
+                            batteryPercentageView(in: geometry)
                         }
                     }
                     
-                    Spacer()
-                }
-                .padding(10)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .containerBackground(for: .widget) {
-                    Color.clear
-                }
-            } else {
-                // Vertical layout for small widget - aligned to top left
-                compactRingAndPercentage(in: geometry)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .containerBackground(for: .widget) {
-                        Color.clear
+                    if widgetFamily == .systemLarge {
+                        VStack(alignment: .leading, spacing: 0) {
+                            widgetTitleView
+                        }
+                        .frame(maxHeight: .infinity, alignment: .top)
                     }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
     }
-
-    private func compactRingAndPercentage(in geometry: GeometryProxy) -> some View {
-        let currentRingSize = ringSize(in: geometry)
-        let strokeWidth = ringStrokeWidth(for: currentRingSize)
-        
-        return VStack(alignment: .leading, spacing: 0) {
-            // Ring with battery icon
-            ZStack {
-                // Background circle
-                Circle()
-                    .stroke(Color.white.opacity(0.25), lineWidth: strokeWidth)
-
-                // Progress circle
-                Circle()
-                    .trim(from: 0, to: batteryProgress)
-                    .stroke(
-                        batteryRingColor,
-                        style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round)
-                    )
-                    .rotationEffect(.degrees(-90))
-                    .widgetAccentable()
-
-                // Battery icon
-                Image(systemName: "photo.on.rectangle.angled")
-                    .font(.system(size: currentRingSize * 0.35, weight: .regular))
-                    .foregroundStyle(Color.white)
-                    .widgetAccentable()
+    
+    // Indicateur de jours - position absolute (top-right)
+    private var daysIndicator: some View {
+        Group {
+            if let lastChargeDate = entry.lastFullChargeDate {
+                let days = Calendar.current.dateComponents([.day], from: lastChargeDate, to: Date()).day ?? 0
+                
+                Text("\(days)j")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.7))
+                    .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
             }
-            .frame(width: currentRingSize, height: currentRingSize)
+        }
+    }
+    
+    // Composant: Ring de batterie
+    private func batteryRingView(size: CGFloat) -> some View {
+        let strokeWidth = ringStrokeWidth(for: size)
+        
+        return ZStack {
+            // Background circle
+            Circle()
+                .stroke(Color.white.opacity(0.25), lineWidth: strokeWidth)
             
-            Spacer()
-            Spacer()
-
+            // Progress circle
+            Circle()
+                .trim(from: 0, to: batteryProgress)
+                .stroke(
+                    batteryRingColor,
+                    style: StrokeStyle(lineWidth: strokeWidth, lineCap: .round)
+                )
+                .rotationEffect(.degrees(-90))
+                .widgetAccentable()
             
-            // Percentage text
+            // Battery icon
+            Image(systemName: "photo.on.rectangle.angled")
+                .font(.system(size: size * 0.35, weight: .regular))
+                .foregroundStyle(Color.white)
+                .widgetAccentable()
+        }
+        .frame(width: size, height: size)
+    }
+    
+    // Composant: Texte du pourcentage
+    private func batteryPercentageView(in geometry: GeometryProxy) -> some View {
+        let fontSize = geometry.size.height * 0.40
+        
+        return Group {
             if let percentage = entry.percentage {
                 Text("\(percentage)%")
-                    .font(.system(size: widgetFamily == .systemSmall ? geometry.size.width * 0.32 : geometry.size.height * 0.43, weight: .regular, design: .default))
+                    .font(.system(size: fontSize, weight: .regular, design: .default))
                     .foregroundStyle(.white)
                     .widgetAccentable()
+                    .padding(.top, 10)
             } else {
                 Text("--")
-                    .font(.system(size: widgetFamily == .systemSmall ? geometry.size.width * 0.28 : geometry.size.height * 0.33, weight: .regular, design: .default))
+                    .font(.system(size: fontSize, weight: .regular, design: .default))
                     .foregroundStyle(.white.opacity(0.5))
             }
         }
-        .padding(5)
     }
+    
+    // Composant: Titre du widget
+    private var widgetTitleView: some View {
+        Text("Canvas Battery")
+            .font(.headline)
+            .foregroundStyle(.white)
+            .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+            .widgetAccentable()
+    }
+
+
 }
 
 @main
@@ -424,30 +482,32 @@ struct CanvasBatteryWidget: Widget {
         .configurationDisplayName("Canvas Battery")
         .description("Displays the latest Canvas battery level.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
-        .containerBackgroundRemovable(true) // Active la transparence Liquid Glass
+        .containerBackgroundRemovable(true)
     }
 }
 
 #Preview("Small", as: .systemSmall) {
     CanvasBatteryWidget()
 } timeline: {
-    CanvasBatteryEntry(date: .now, percentage: 78, backgroundImage: nil)
-    CanvasBatteryEntry(date: .now, percentage: 38, backgroundImage: nil)
-    CanvasBatteryEntry(date: .now, percentage: 8, backgroundImage: nil)
-    CanvasBatteryEntry(date: .now, percentage: nil, backgroundImage: nil)
+    CanvasBatteryEntry(date: .now, percentage: 78, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -2, to: .now))
+    CanvasBatteryEntry(date: .now, percentage: 38, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -5, to: .now))
+    CanvasBatteryEntry(date: .now, percentage: 8, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -10, to: .now))
+    CanvasBatteryEntry(date: .now, percentage: nil, lastFullChargeDate: nil)
 }
+
 #Preview("Medium", as: .systemMedium) {
     CanvasBatteryWidget()
 } timeline: {
-    CanvasBatteryEntry(date: .now, percentage: 78, backgroundImage: nil)
-    CanvasBatteryEntry(date: .now, percentage: 38, backgroundImage: nil)
-    CanvasBatteryEntry(date: .now, percentage: 8, backgroundImage: nil)
+    CanvasBatteryEntry(date: .now, percentage: 78, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -3, to: .now))
+    CanvasBatteryEntry(date: .now, percentage: 38, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -7, to: .now))
+    CanvasBatteryEntry(date: .now, percentage: 8, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -14, to: .now))
 }
 
 #Preview("Large", as: .systemLarge) {
     CanvasBatteryWidget()
 } timeline: {
-    CanvasBatteryEntry(date: .now, percentage: 78, backgroundImage: nil)
-    CanvasBatteryEntry(date: .now, percentage: 38, backgroundImage: nil)
+    CanvasBatteryEntry(date: .now, percentage: 78, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -1, to: .now))
+    CanvasBatteryEntry(date: .now, percentage: 38, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -4, to: .now))
 }
+
 

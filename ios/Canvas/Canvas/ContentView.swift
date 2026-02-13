@@ -12,7 +12,6 @@ struct ContentView: View {
                 batterySection
                 photoSection
             }
-            .navigationTitle("Canvas")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -81,13 +80,11 @@ struct ContentView: View {
             } label: {
                 Label("Intervalle (heures)", systemImage: "clock")
             }
-        } header: {
-            Text("Configuration")
         }
     }
     
     private var batterySection: some View {
-        Section("État du Canvas") {
+        Section {
             HStack {
                 Label {
                     Text("Batterie")
@@ -98,10 +95,23 @@ struct ContentView: View {
                 
                 Spacer()
                 
-                Text(canvasBatteryText)
+                Text(canvasBatteryPercentageText)
                     .foregroundStyle(canvasBatteryColor)
                     .fontWeight(.semibold)
                     .contentTransition(.numericText())
+            }
+            
+            if let days = viewModel.lastFullChargeDays {
+                LabeledContent {
+                    Text("\(days) jour\(days > 1 ? "s" : "")")
+                        .foregroundStyle(.secondary)
+                } label: {
+                    Label("Dernière charge complète", systemImage: "clock.arrow.circlepath")
+                }
+            }
+        } footer: {
+            if let percentage = viewModel.canvasBatteryPercentage, percentage < 20 {
+                Text("⚠️ Batterie faible, pensez à recharger le Canvas")
             }
         }
     }
@@ -183,8 +193,6 @@ struct ContentView: View {
                     .buttonStyle(.borderedProminent)
                 }
             }
-        } header: {
-            Text("Photos")
         }
         
         if viewModel.isPhotoAccessGranted && !viewModel.albums.isEmpty && !viewModel.isUploading {
@@ -212,10 +220,11 @@ struct ContentView: View {
         )
     }
 
-    private var canvasBatteryText: String {
+    private var canvasBatteryPercentageText: String {
         guard let percentage = viewModel.canvasBatteryPercentage else {
             return "Indisponible"
         }
+
         return "\(percentage)%"
     }
 
@@ -253,7 +262,30 @@ struct ContentView: View {
         }
     }
 }
-#Preview {
+
+#Preview("Default") {
     ContentView()
 }
+
+@MainActor
+@Observable
+final class PreviewAppViewModel {
+    var canvasBatteryPercentage: Int? = 75
+    var lastFullChargeDays: Int? = 3
+    var serverURL: String = "http://192.168.0.165:3000"
+    var canvasURL: String = "http://192.168.0.174"
+    var cronIntervalInHours: String = "3"
+    var isPhotoAccessGranted: Bool = true
+    var albums: [PhotoAlbum] = [
+        PhotoAlbum(id: "1", title: "Vacances", photoCount: 42),
+        PhotoAlbum(id: "2", title: "Famille", photoCount: 128),
+        PhotoAlbum(id: "3", title: "Favoris", photoCount: 18)
+    ]
+    var selectedAlbumId: String? = "1"
+    var isUploading: Bool = false
+    var isStartingPlaylist: Bool = false
+    var progress: UploadProgress = .empty
+    var statusText: String = "Prêt à uploader"
+}
+
 

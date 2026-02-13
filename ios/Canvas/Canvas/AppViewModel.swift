@@ -8,6 +8,7 @@ final class AppViewModel {
     private static let serverURLDefaultsKey = "canvas.server.url"
     private static let canvasURLDefaultsKey = "canvas.device.url"
     private static let batteryPercentageDefaultsKey = "canvas.battery.percentage"
+    private static let lastFullChargeDateDefaultsKey = "canvas.battery.last-full-charge-date"
     private static let sharedDefaultsSuiteName = "group.polyforms.canvas"
     private static let defaultServerURL = "http://192.168.0.165:3000"
     private static let defaultCanvasURL = "http://192.168.0.174"
@@ -37,6 +38,12 @@ final class AppViewModel {
             persistCanvasBatteryPercentage()
         }
     }
+    private(set) var lastFullChargeDate: Date? {
+        didSet {
+            persistLastFullChargeDate()
+        }
+    }
+    private(set) var lastFullChargeDays: Int?
 
     private let maxConcurrentUploads = 5
     private let userDefaults: UserDefaults
@@ -80,14 +87,36 @@ final class AppViewModel {
     func refreshCanvasBattery() async {
         guard let baseURL = validatedHTTPURL(serverURL) else {
             canvasBatteryPercentage = nil
+            lastFullChargeDate = nil
+            lastFullChargeDays = nil
             return
         }
 
         let service = CanvasStatusService(baseURL: baseURL)
         do {
-            canvasBatteryPercentage = try await service.getBatteryReport()
+            if let batteryData = try await service.getBatteryData() {
+                canvasBatteryPercentage = batteryData.percentage
+
+                let dateFormatter = ISO8601DateFormatter()
+                dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+                if let lastChargeDateString = batteryData.lastFullChargeDate,
+                   let lastChargeDate = dateFormatter.date(from: lastChargeDateString) {
+                    self.lastFullChargeDate = lastChargeDate
+                    let days = Calendar.current.dateComponents([.day], from: lastChargeDate, to: Date()).day ?? 0
+                    lastFullChargeDays = days
+                } else {
+                    lastFullChargeDate = nil
+                    lastFullChargeDays = nil
+                }
+            } else {
+                canvasBatteryPercentage = nil
+                lastFullChargeDate = nil
+                lastFullChargeDays = nil
+            }
         } catch {
             canvasBatteryPercentage = nil
+            lastFullChargeDate = nil
+            lastFullChargeDays = nil
         }
     }
 
@@ -349,5 +378,16 @@ final class AppViewModel {
         }
         userDefaults.set(canvasBatteryPercentage, forKey: Self.batteryPercentageDefaultsKey)
         sharedDefaults?.set(canvasBatteryPercentage, forKey: Self.batteryPercentageDefaultsKey)
+    }
+
+    private func persistLastFullChargeDate() {
+        guard let lastFullChargeDate else {
+            userDefaults.removeObject(forKey: Self.lastFullChargeDateDefaultsKey)
+            sharedDefaults?.removeObject(forKey: Self.lastFullChargeDateDefaultsKey)
+            return
+        }
+        let timestamp = lastFullChargeDate.timeIntervalSince1970
+        userDefaults.set(timestamp, forKey: Self.lastFullChargeDateDefaultsKey)
+        sharedDefaults?.set(timestamp, forKey: Self.lastFullChargeDateDefaultsKey)
     }
 }
