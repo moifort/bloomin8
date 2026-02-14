@@ -406,7 +406,7 @@ private struct CanvasBatteryWidgetView: View {
 
                 Text("\(days)j", comment: "Days since last charge, shown in widget")
                     .font(.caption)
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(.primary.opacity(0.7))
                     .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
             }
         }
@@ -419,7 +419,7 @@ private struct CanvasBatteryWidgetView: View {
         return ZStack {
             // Background circle
             Circle()
-                .stroke(Color.white.opacity(0.25), lineWidth: strokeWidth)
+                .stroke(Color.primary.opacity(0.25), lineWidth: strokeWidth)
 
             // Progress circle
             Circle()
@@ -434,7 +434,7 @@ private struct CanvasBatteryWidgetView: View {
             // Battery icon
             Image(systemName: "photo.on.rectangle.angled")
                 .font(.system(size: size * 0.35, weight: .regular))
-                .foregroundStyle(Color.white)
+                .foregroundStyle(Color.primary)
                 .widgetAccentable()
         }
         .frame(width: size, height: size)
@@ -448,13 +448,13 @@ private struct CanvasBatteryWidgetView: View {
             if let percentage = entry.percentage {
                 Text("\(percentage)%")
                     .font(.system(size: fontSize, weight: .regular, design: .default))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
                     .widgetAccentable()
                     .padding(.top, 10)
             } else {
                 Text("--")
                     .font(.system(size: fontSize, weight: .regular, design: .default))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .foregroundStyle(.primary.opacity(0.5))
             }
         }
     }
@@ -463,7 +463,7 @@ private struct CanvasBatteryWidgetView: View {
     private var widgetTitleView: some View {
         Text("Canvas Battery")
             .font(.headline)
-            .foregroundStyle(.white)
+            .foregroundStyle(.primary)
             .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
             .widgetAccentable()
     }
