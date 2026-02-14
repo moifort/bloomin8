@@ -1,141 +1,76 @@
-# Canvas Server
+# Canvas
 
-Nitro + TypeScript service that manages an image playlist for a BLOOMIN8 Canvas device.
+A self-hosted alternative to the official BLOOMIN8 app for managing images on your Canvas e-ink display.
 
-The server:
-- Stores uploaded images.
-- Starts a playlist tied to a target canvas URL.
-- Responds to the device pull loop through `/eink_pull`.
-- Accepts display feedback through `/eink_signal`.
+## Why?
 
-## Stack
+The official BLOOMIN8 app has several limitations:
 
-- Nitro (H3)
-- TypeScript (`strict: true`)
-- Bun
-- Nitro storage (filesystem drivers)
-- `ts-brand` and `ts-pattern`
+- Cannot upload iOS photo albums directly
+- Crashes when uploading more than ~30 photos
+- Uploads photos to an unknown third-party cloud
+- No widget or quick way to monitor device status
 
-## Local Development
+Canvas solves all of these by running a lightweight server on your own network:
 
-1. Install dependencies:
+- **Bulk upload** — Send your entire photo library without crashes
+- **Self-hosted** — Your photos stay on your server, never leave your network
+- **iOS app** — Simple SwiftUI app to upload photos and manage playlists
+- **Battery widget** — iOS lock screen widget showing battery level and days since last charge
 
-```bash
-bun install
+## How It Works
+
+1. Upload photos from the iOS app to your Canvas server
+2. Start a playlist — the server wakes the e-ink device
+3. The device periodically pulls a new image from the server and displays it
+4. The iOS widget shows the current battery level at a glance
+
+## Installation
+
+### Docker Compose
+
+Create a `docker-compose.yml`:
+
+```yaml
+services:
+  canvas-server:
+    image: moifort/bloomin8:latest
+    container_name: canvas-server
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: "3000"
+      NITRO_SERVER_URL: http://<YOUR_SERVER_IP>:3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
 ```
 
-2. Start the dev server:
+> Replace `<YOUR_SERVER_IP>` with the local IP address of the machine running the server (e.g. `192.168.0.165`). The BLOOMIN8 device uses this URL to pull images, so it must be reachable on your network.
+
+Then start the server:
 
 ```bash
-bun run dev
+docker compose up -d
 ```
 
-3. Server listens on `http://0.0.0.0:3000` by default.
+### CasaOS
 
-## Build and Preview
+A ready-to-use CasaOS configuration is available in `docker-compose.casaos.yml`. Import it directly from the CasaOS dashboard.
 
-```bash
-bun run build
-bun run preview
-```
+### iOS App
 
-## Runtime Configuration
+Build and install the iOS app from `ios/Canvas/` using Xcode. On first launch, set the server URL to point to your Canvas server (e.g. `http://192.168.0.165:3000`).
 
-Runtime config is declared in `nitro.config.ts` and read in `/Users/thibaut/Code/canvas/server/config/index.ts`.
+![iOS App](ios.PNG)
 
-| Key | Env var | Default | Purpose |
-| --- | --- | --- | --- |
-| `runtimeConfig.serverUrl` | `NITRO_SERVER_URL` | `http://192.168.0.164:3000` | Public base URL used in responses to the canvas device |
+### iOS Widget
 
-## Storage
+After installing the app, add the **Canvas Battery** widget to your lock screen or home screen. It refreshes every 15 minutes and displays the current battery percentage of your e-ink display.
 
-Nitro storage buckets are configured in `/Users/thibaut/Code/canvas/nitro.config.ts`:
+![iOS Widget](ios-widget.PNG)
 
-- `images` -> `./data/images`
-- `playlist` -> `./data/playlist`
-- `canvas` -> `./data/canvas`
+## Docker Hub
 
-Playlist state is persisted, including:
-- Playlist status (`in-progress` or `stop`)
-- Remaining image IDs for random non-repeating selection
-- Pull interval in hours
-
-## API
-
-### `POST /upload`
-
-Upload raw image bytes.
-
-- Query:
-  - `orientation`: orientation marker validated by the server (examples in `api.http` use `P`)
-- Body:
-  - `application/octet-stream`
-- Success response:
-  - `200` with `{ status, data: { id, url } }`
-
-### `DELETE /images`
-
-Delete all stored images.
-
-- Success response:
-  - `200` with `{ status, message }`
-
-### `POST /playlist/start`
-
-Start playlist processing and wake the device by configuring its upstream settings.
-
-- JSON body:
-  - `canvasUrl`: device base URL
-  - `cronIntervalInHours`: pull interval
-- Success response:
-  - `200` with `{ status, message }`
-- Failure response:
-  - `400` when no images are available (`Playlist must have at least one image`)
-
-### `GET /eink_pull`
-
-Main endpoint called by the device on each wake cycle.
-
-Behavior:
-- Returns `SHOW` payload with `image_url` and next schedule when an image is available.
-- Returns stop payload (`next_cron_time: null`) when playlist is missing/stopped/empty.
-- Returns no-image payload for image lookup misses.
-- Captures optional query parameter `battery` (`0..100`) and persists the latest percentage.
-
-### `GET /canvas/battery`
-
-Returns the latest battery report received from the canvas pull loop.
-
-- Success response:
-  - `200` with `{ status, data: 71 }` when a battery value is available
-  - `200` with `{ status, data: "battery-unavailable" }` when no report has been received yet
-
-### `GET /eink_signal`
-
-Feedback endpoint for device acknowledgements.
-
-- Success response:
-  - `200` with `{ status, message: "Feedback recorded" }`
-
-## Typical Flow
-
-1. Upload one or more images through `POST /upload`.
-2. Start playlist using `POST /playlist/start`.
-3. Device calls `GET /eink_pull` at scheduled times.
-4. Server returns next image URL and next UTC pull time.
-5. Device optionally calls `GET /eink_signal` after display.
-
-## Useful Files
-
-- `/Users/thibaut/Code/canvas/api.http`: ready-to-run local HTTP scenarios.
-- `/Users/thibaut/Code/canvas/blomin8.md`: protocol notes for `/upstream/pull_settings`, `/eink_pull`, and `/eink_signal`.
-
-## Docker
-
-Build and run with compose:
-
-```bash
-docker compose up --build
-```
-
-The current compose file sets `NITRO_SERVER_URL` and exposes port `3000`.
+The Docker image is available at [moifort/bloomin8](https://hub.docker.com/r/moifort/bloomin8).

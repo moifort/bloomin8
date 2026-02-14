@@ -1,0 +1,45 @@
+name: bloomin8
+services:
+  canvas-server:
+    cpu_shares: 90
+    command: []
+    container_name: canvas-server
+    deploy:
+      resources:
+        limits:
+          memory: 1816M
+    environment:
+      - HOST=0.0.0.0
+      - NITRO_SERVER_URL=http://192.168.0.165:3000
+      - PORT=3000
+    hostname: canvas-server
+    image: moifort/bloomin8:latest
+    labels:
+      icon: https://icon.casaos.io/main/all/canvas-server.png
+    ports:
+      - target: 3000
+        published: "3000"
+        protocol: tcp
+    pull_policy: always
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: /DATA/AppData/canvas-server
+        target: /app/data
+    devices: []
+    cap_add: []
+    network_mode: bridge
+    privileged: false
+x-casaos:
+  author: self
+  category: self
+  hostname: ""
+  icon: https://icon.casaos.io/main/all/canvas-server.png
+  index: /
+  is_uncontrolled: false
+  port_map: "3000"
+  scheme: http
+  store_app_id: breathtaking_derek
+  title:
+    custom: ""
+    en_us: canvas-server

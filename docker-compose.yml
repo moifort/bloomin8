@@ -1,16 +1,13 @@
 services:
   canvas-server:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: moifort/bloomin8:latest
     container_name: canvas-server
     restart: unless-stopped
     environment:
       HOST: 0.0.0.0
       PORT: "3000"
-      DATA_DIR: /data
       NITRO_SERVER_URL: http://192.168.0.165:3000
     ports:
       - "3000:3000"
     volumes:
-      - ./data:/data
+      - ./data:/app/data
