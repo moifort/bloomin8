@@ -6,7 +6,19 @@
       "WebSearch",
       "Bash(curl:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git remote:*)",
+      "Bash(ls:*)",
+      "Bash(head:*)",
+      "Bash(gh auth:*)",
+      "Bash(git -C /Users/thibaut/Code config:*)",
+      "Bash(git -C /Users/thibaut/Code/bloomin8 config user.name)",
+      "Bash(git -C /Users/thibaut/Code/bloomin8 remote get-url origin)",
+      "Bash(git init:*)",
+      "Bash(brew install:*)",
+      "Bash(gh repo create:*)",
+      "Skill(commit-commands:commit)"
     ]
   },
   "outputStyle": "Explanatory",
