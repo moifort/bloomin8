@@ -223,7 +223,7 @@ struct ContentView: View {
 
     private var canvasBatteryPercentageText: String {
         guard let percentage = viewModel.canvasBatteryPercentage else {
-            return "Indisponible"
+            return String(localized: "Indisponible")
         }
 
         return "\(percentage)%"

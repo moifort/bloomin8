@@ -156,10 +156,11 @@
 				};
 			};
 			buildConfigurationList = BF01EF3B2F36C1F800FC17DD /* Build configuration list for PBXProject "Canvas" */;
-			developmentRegion = en;
+			developmentRegion = fr;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				fr,
 				Base,
 			);
 			mainGroup = BF01EF372F36C1F800FC17DD;

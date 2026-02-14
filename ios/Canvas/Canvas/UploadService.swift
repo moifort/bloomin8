@@ -22,13 +22,13 @@ struct UploadService {
         var errorDescription: String? {
             switch self {
             case .invalidEndpoint:
-                return "Endpoint d'upload invalide."
+                return String(localized: "Endpoint d'upload invalide.")
             case .invalidHTTPResponse:
-                return "Reponse HTTP invalide."
+                return String(localized: "Réponse HTTP invalide.")
             case .invalidPayload:
-                return "Reponse upload invalide."
+                return String(localized: "Réponse upload invalide.")
             case let .server(statusCode, message):
-                return "Serveur \(statusCode): \(message)"
+                return String(localized: "Serveur \(statusCode): \(message)")
             case let .transport(error):
                 return error.localizedDescription
             }
@@ -108,9 +108,9 @@ struct PlaylistService {
         var errorDescription: String? {
             switch self {
             case .invalidHTTPResponse:
-                return "Reponse HTTP invalide."
+                return String(localized: "Réponse HTTP invalide.")
             case let .server(statusCode, message):
-                return "Serveur \(statusCode): \(message)"
+                return String(localized: "Serveur \(statusCode): \(message)")
             case let .transport(error):
                 return error.localizedDescription
             }
@@ -155,7 +155,7 @@ struct PlaylistService {
 
         if (200 ..< 300).contains(http.statusCode) {
             let envelope = try? JSONDecoder().decode(ResponseEnvelope.self, from: data)
-            return envelope?.message ?? "Playlist lancee."
+            return envelope?.message ?? String(localized: "Playlist lancée.")
         }
 
         let decodedMessage = (try? JSONDecoder().decode(ResponseEnvelope.self, from: data))?.message
@@ -178,9 +178,9 @@ struct ImageService {
         var errorDescription: String? {
             switch self {
             case .invalidHTTPResponse:
-                return "Reponse HTTP invalide."
+                return String(localized: "Réponse HTTP invalide.")
             case let .server(statusCode, message):
-                return "Serveur \(statusCode): \(message)"
+                return String(localized: "Serveur \(statusCode): \(message)")
             case let .transport(error):
                 return error.localizedDescription
             }
@@ -216,7 +216,7 @@ struct ImageService {
 
         if (200 ..< 300).contains(http.statusCode) {
             let envelope = try? JSONDecoder().decode(ResponseEnvelope.self, from: data)
-            return envelope?.message ?? "Photos supprimees."
+            return envelope?.message ?? String(localized: "Photos supprimées.")
         }
 
         let decodedMessage = (try? JSONDecoder().decode(ResponseEnvelope.self, from: data))?.message
@@ -275,11 +275,11 @@ struct CanvasStatusService {
         var errorDescription: String? {
             switch self {
             case .invalidHTTPResponse:
-                return "Reponse HTTP invalide."
+                return String(localized: "Réponse HTTP invalide.")
             case .invalidPayload:
-                return "Reponse batterie invalide."
+                return String(localized: "Réponse batterie invalide.")
             case let .server(statusCode, message):
-                return "Serveur \(statusCode): \(message)"
+                return String(localized: "Serveur \(statusCode): \(message)")
             case let .transport(error):
                 return error.localizedDescription
             }

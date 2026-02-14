@@ -18,9 +18,9 @@ enum PhotoLibraryService {
         var errorDescription: String? {
             switch self {
             case .cancelled:
-                return "Chargement annule."
+                return String(localized: "Chargement annulé.")
             case .invalidData:
-                return "Donnees image invalides."
+                return String(localized: "Données image invalides.")
             case let .underlying(error):
                 return error.localizedDescription
             }
@@ -55,7 +55,7 @@ enum PhotoLibraryService {
 
             seen.insert(collection.localIdentifier)
             let title = collection.localizedTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let fallback = "Album sans nom"
+            let fallback = String(localized: "Album sans nom")
 
             return PhotoAlbum(
                 id: collection.localIdentifier,

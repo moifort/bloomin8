@@ -1,0 +1,55 @@
+{
+  "sourceLanguage" : "fr",
+  "strings" : {
+    "--" : {
+
+    },
+    "%lld%%" : {
+
+    },
+    "%lldj" : {
+      "comment" : "Days since last charge, shown in widget",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldd"
+          }
+        }
+      }
+    },
+    "Canvas Battery" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Canvas Battery"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Batterie Canvas"
+          }
+        }
+      }
+    },
+    "Displays the latest Canvas battery level." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Displays the latest Canvas battery level."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Affiche le niveau de batterie du Canvas."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

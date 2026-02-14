@@ -134,7 +134,7 @@ final class AppViewModel {
         Task {
             authorizationStatus = await PhotoLibraryService.requestAuthorization()
             guard isPhotoAccessGranted else {
-                errorText = "Acces Photos refuse."
+                errorText = String(localized: "Accès Photos refusé.")
                 return
             }
 
@@ -191,11 +191,11 @@ final class AppViewModel {
             return
         }
         guard let canvasEndpoint = validatedHTTPURL(canvasURL) else {
-            errorText = "URL Canvas invalide."
+            errorText = String(localized: "URL Canvas invalide.")
             return
         }
         guard let parsedCronIntervalInHours = validatedPositiveInt(cronIntervalInHours) else {
-            errorText = "Intervalle cron invalide (entier > 0 requis)."
+            errorText = String(localized: "Intervalle cron invalide (entier > 0 requis).")
             return
         }
 
@@ -212,7 +212,7 @@ final class AppViewModel {
     private func runUpload(albumId: String, baseURL: URL) async {
         isUploading = true
         progress = .empty
-        statusText = "Lecture de l'album..."
+        statusText = String(localized: "Lecture de l'album...")
         errorText = nil
 
         defer {
@@ -226,7 +226,7 @@ final class AppViewModel {
             return
         }
 
-        statusText = "Suppression des photos serveur..."
+        statusText = String(localized: "Suppression des photos serveur...")
         let imageService = ImageService(baseURL: baseURL)
         do {
             _ = try await imageService.deleteAll()
@@ -236,11 +236,11 @@ final class AppViewModel {
         }
 
         if Task.isCancelled {
-            statusText = "Upload annule."
+            statusText = String(localized: "Upload annulé.")
             return
         }
 
-        statusText = "Upload en cours..."
+        statusText = String(localized: "Upload en cours...")
         let uploader = UploadService(baseURL: baseURL)
         progress = UploadProgress(total: assets.count, processed: 0, uploaded: 0, failed: 0)
 
@@ -259,7 +259,7 @@ final class AppViewModel {
             while let itemResult = await group.next() {
                 if Task.isCancelled {
                     group.cancelAll()
-                    statusText = "Upload annule."
+                    statusText = String(localized: "Upload annulé.")
                     return
                 }
 
@@ -273,7 +273,7 @@ final class AppViewModel {
                 }
 
                 progress.processed += 1
-                statusText = "Upload \(progress.processed)/\(progress.total)"
+                statusText = String(localized: "Upload \(progress.processed)/\(progress.total)")
 
                 if nextAssetIndex < assets.count {
                     let asset = assets[nextAssetIndex]
@@ -286,11 +286,11 @@ final class AppViewModel {
         }
 
         if Task.isCancelled {
-            statusText = "Upload annule."
+            statusText = String(localized: "Upload annulé.")
             return
         }
 
-        statusText = "Termine: \(progress.uploaded) envoyees, \(progress.failed) echecs."
+        statusText = String(localized: "Terminé : \(progress.uploaded) envoyées, \(progress.failed) échecs.")
     }
 
     private enum UploadItemResult {
@@ -332,7 +332,7 @@ final class AppViewModel {
         cronIntervalInHours: Int
     ) async {
         isStartingPlaylist = true
-        statusText = "Lancement de la playlist..."
+        statusText = String(localized: "Lancement de la playlist...")
         errorText = nil
 
         defer {

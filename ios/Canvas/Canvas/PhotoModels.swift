@@ -29,13 +29,13 @@ enum AppError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidServerURL:
-            return "URL serveur invalide."
+            return String(localized: "URL serveur invalide.")
         case .missingAlbumSelection:
-            return "Sélectionnez un album."
+            return String(localized: "Sélectionnez un album.")
         case .resizeFailed:
-            return "Impossible de convertir l'image en JPEG 1200×1600."
+            return String(localized: "Impossible de convertir l'image en JPEG 1200×1600.")
         case .noPhotosInAlbum:
-            return "Cet album ne contient pas de photos."
+            return String(localized: "Cet album ne contient pas de photos.")
         }
     }
 }

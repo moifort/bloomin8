@@ -404,7 +404,7 @@ private struct CanvasBatteryWidgetView: View {
             if let lastChargeDate = entry.lastFullChargeDate {
                 let days = Calendar.current.dateComponents([.day], from: lastChargeDate, to: Date()).day ?? 0
 
-                Text("\(days)j")
+                Text("\(days)j", comment: "Days since last charge, shown in widget")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.7))
                     .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
