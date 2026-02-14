@@ -4,7 +4,9 @@
       "Bash(tree:*)",
       "Bash(bun:*)",
       "WebSearch",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   },
   "outputStyle": "Explanatory",
