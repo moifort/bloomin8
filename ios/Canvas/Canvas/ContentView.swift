@@ -110,6 +110,15 @@ struct ContentView: View {
                     Label("Dernière charge complète", systemImage: "clock.arrow.circlepath")
                 }
             }
+
+            if let lastPullDate = viewModel.lastPullDate {
+                LabeledContent {
+                    Text(lastPullDate, format: .relative(presentation: .named))
+                        .foregroundStyle(.secondary)
+                } label: {
+                    Label("Dernier contact", systemImage: "antenna.radiowaves.left.and.right")
+                }
+            }
         } footer: {
             if let percentage = viewModel.canvasBatteryPercentage, percentage < 10 {
                 Text("⚠️ Batterie faible, pensez à recharger le Canvas")

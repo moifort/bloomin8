@@ -18,7 +18,8 @@
       "Bash(git init:*)",
       "Bash(brew install:*)",
       "Bash(gh repo create:*)",
-      "Skill(commit-commands:commit)"
+      "Skill(commit-commands:commit)",
+      "mcp__ide__getDiagnostics"
     ]
   },
   "outputStyle": "Explanatory",

@@ -9,6 +9,7 @@ private enum CanvasWidgetStore {
     static let lastFullChargeDateKey = "canvas.battery.last-full-charge-date"
     static let widgetBackgroundPositionKey = "canvas.widget.background.position"
     static let widgetSafeAreaTopKey = "canvas.widget.safe-area.top"
+    static let lastPullDateKey = "canvas.battery.last-pull-date"
     static let widgetBackgroundImageFilename = "canvas-widget-background.png"
     static let defaultServerURL = "http://192.168.0.165:3000"
 }
@@ -46,6 +47,7 @@ private struct CanvasBatteryResponseEnvelope: Decodable {
     struct BatteryData: Decodable {
         let percentage: Int
         let lastFullChargeDate: String?
+        let lastPullDate: String?
     }
 
     enum Payload: Decodable {
@@ -61,7 +63,7 @@ private struct CanvasBatteryResponseEnvelope: Decodable {
             }
 
             if let rawPercentage = try? container.decode(Int.self) {
-                self = .batteryData(BatteryData(percentage: rawPercentage, lastFullChargeDate: nil))
+                self = .batteryData(BatteryData(percentage: rawPercentage, lastFullChargeDate: nil, lastPullDate: nil))
                 return
             }
 
@@ -84,11 +86,12 @@ private struct CanvasBatteryEntry: TimelineEntry {
     let date: Date
     let percentage: Int?
     let lastFullChargeDate: Date?
+    let lastPullDate: Date?
 }
 
 private struct CanvasBatteryProvider: TimelineProvider {
     func placeholder(in context: Context) -> CanvasBatteryEntry {
-        CanvasBatteryEntry(date: Date(), percentage: 72, lastFullChargeDate: nil)
+        CanvasBatteryEntry(date: Date(), percentage: 72, lastFullChargeDate: nil, lastPullDate: nil)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (CanvasBatteryEntry) -> Void) {
@@ -106,26 +109,30 @@ private struct CanvasBatteryProvider: TimelineProvider {
     }
 
     private func buildEntry(displaySize: CGSize) async -> CanvasBatteryEntry {
-        let (percentage, lastChargeDate) = await resolveBatteryData()
-        return CanvasBatteryEntry(date: Date(), percentage: percentage, lastFullChargeDate: lastChargeDate)
+        let (percentage, lastChargeDate, lastPullDate) = await resolveBatteryData()
+        return CanvasBatteryEntry(date: Date(), percentage: percentage, lastFullChargeDate: lastChargeDate, lastPullDate: lastPullDate)
     }
 
-    private func resolveBatteryData() async -> (percentage: Int?, lastChargeDate: Date?) {
+    private func resolveBatteryData() async -> (percentage: Int?, lastChargeDate: Date?, lastPullDate: Date?) {
         let cachedPercentage = readCachedBatteryPercentage()
         let cachedChargeDate = readCachedLastFullChargeDate()
+        let cachedPullDate = readCachedLastPullDate()
 
-        guard let (fetchedPercentage, fetchedChargeDate) = await fetchBatteryData() else {
-            return (cachedPercentage, cachedChargeDate)
+        guard let (fetchedPercentage, fetchedChargeDate, fetchedPullDate) = await fetchBatteryData() else {
+            return (cachedPercentage, cachedChargeDate, cachedPullDate)
         }
 
         persistBatteryPercentage(fetchedPercentage)
         if let chargeDate = fetchedChargeDate {
             persistLastFullChargeDate(chargeDate)
         }
-        return (fetchedPercentage, fetchedChargeDate ?? cachedChargeDate)
+        if let pullDate = fetchedPullDate {
+            persistLastPullDate(pullDate)
+        }
+        return (fetchedPercentage, fetchedChargeDate ?? cachedChargeDate, fetchedPullDate ?? cachedPullDate)
     }
 
-    private func fetchBatteryData() async -> (percentage: Int, lastChargeDate: Date?)? {
+    private func fetchBatteryData() async -> (percentage: Int, lastChargeDate: Date?, lastPullDate: Date?)? {
         guard
             let baseURL = URL(string: readServerURL()),
             ["http", "https"].contains(baseURL.scheme?.lowercased())
@@ -164,12 +171,11 @@ private struct CanvasBatteryProvider: TimelineProvider {
 
         switch payload {
         case let .batteryData(batteryData):
-            let chargeDate = batteryData.lastFullChargeDate.flatMap {
-                let formatter = ISO8601DateFormatter()
-                formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-                return formatter.date(from: $0)
-            }
-            return (batteryData.percentage, chargeDate)
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            let chargeDate = batteryData.lastFullChargeDate.flatMap { formatter.date(from: $0) }
+            let pullDate = batteryData.lastPullDate.flatMap { formatter.date(from: $0) }
+            return (batteryData.percentage, chargeDate, pullDate)
         case .unavailable:
             return nil
         }
@@ -274,6 +280,18 @@ private struct CanvasBatteryProvider: TimelineProvider {
         UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.set(timestamp, forKey: CanvasWidgetStore.lastFullChargeDateKey)
     }
 
+    private func readCachedLastPullDate() -> Date? {
+        guard let timestamp = UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.object(forKey: CanvasWidgetStore.lastPullDateKey) as? Double else {
+            return nil
+        }
+        return Date(timeIntervalSince1970: timestamp)
+    }
+
+    private func persistLastPullDate(_ date: Date) {
+        let timestamp = date.timeIntervalSince1970
+        UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.set(timestamp, forKey: CanvasWidgetStore.lastPullDateKey)
+    }
+
     private func readBackgroundPosition() -> WidgetBackgroundPosition? {
         let rawValue = UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.string(forKey: CanvasWidgetStore.widgetBackgroundPositionKey)
         return WidgetBackgroundPosition(rawValue: rawValue ?? "")
@@ -346,7 +364,11 @@ private struct CanvasBatteryWidgetView: View {
         GeometryReader { geometry in
             ZStack(alignment: .topTrailing) {
                 widgetContent(in: geometry)
-                daysIndicator
+                VStack(alignment: .trailing) {
+                    daysIndicator
+                    Spacer()
+                    lastPullIndicator
+                }
             }
             .containerBackground(for: .widget) {
                 Color.clear
@@ -411,6 +433,18 @@ private struct CanvasBatteryWidgetView: View {
                 Text("\(days)j", comment: "Days since last charge, shown in widget")
                     .font(.caption)
                     .foregroundStyle(.primary.opacity(0.7))
+                    .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
+            }
+        }
+    }
+
+    // Indicateur de dernier contact - position absolute (bottom-right)
+    private var lastPullIndicator: some View {
+        Group {
+            if let lastPullDate = entry.lastPullDate {
+                Text(lastPullDate, format: .relative(presentation: .named))
+                    .font(.caption2)
+                    .foregroundStyle(.primary.opacity(0.5))
                     .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
             }
         }
@@ -493,25 +527,25 @@ struct CanvasBatteryWidget: Widget {
 #Preview("Small", as: .systemSmall) {
     CanvasBatteryWidget()
 } timeline: {
-    CanvasBatteryEntry(date: .now, percentage: 78, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -2, to: .now))
-    CanvasBatteryEntry(date: .now, percentage: 38, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -5, to: .now))
-    CanvasBatteryEntry(date: .now, percentage: 8, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -10, to: .now))
-    CanvasBatteryEntry(date: .now, percentage: nil, lastFullChargeDate: nil)
+    CanvasBatteryEntry(date: .now, percentage: 78, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -2, to: .now), lastPullDate: Calendar.current.date(byAdding: .hour, value: -2, to: .now))
+    CanvasBatteryEntry(date: .now, percentage: 38, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -5, to: .now), lastPullDate: Calendar.current.date(byAdding: .hour, value: -6, to: .now))
+    CanvasBatteryEntry(date: .now, percentage: 8, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -10, to: .now), lastPullDate: Calendar.current.date(byAdding: .day, value: -1, to: .now))
+    CanvasBatteryEntry(date: .now, percentage: nil, lastFullChargeDate: nil, lastPullDate: nil)
 }
 
 #Preview("Medium", as: .systemMedium) {
     CanvasBatteryWidget()
 } timeline: {
-    CanvasBatteryEntry(date: .now, percentage: 78, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -3, to: .now))
-    CanvasBatteryEntry(date: .now, percentage: 38, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -7, to: .now))
-    CanvasBatteryEntry(date: .now, percentage: 8, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -14, to: .now))
+    CanvasBatteryEntry(date: .now, percentage: 78, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -3, to: .now), lastPullDate: Calendar.current.date(byAdding: .hour, value: -3, to: .now))
+    CanvasBatteryEntry(date: .now, percentage: 38, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -7, to: .now), lastPullDate: Calendar.current.date(byAdding: .hour, value: -12, to: .now))
+    CanvasBatteryEntry(date: .now, percentage: 8, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -14, to: .now), lastPullDate: Calendar.current.date(byAdding: .day, value: -2, to: .now))
 }
 
 #Preview("Large", as: .systemLarge) {
     CanvasBatteryWidget()
 } timeline: {
-    CanvasBatteryEntry(date: .now, percentage: 78, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -1, to: .now))
-    CanvasBatteryEntry(date: .now, percentage: 38, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -4, to: .now))
+    CanvasBatteryEntry(date: .now, percentage: 78, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -1, to: .now), lastPullDate: Calendar.current.date(byAdding: .minute, value: -30, to: .now))
+    CanvasBatteryEntry(date: .now, percentage: 38, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -4, to: .now), lastPullDate: Calendar.current.date(byAdding: .hour, value: -5, to: .now))
 }
 
 

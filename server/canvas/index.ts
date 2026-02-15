@@ -61,6 +61,7 @@ export namespace Canvas {
       lastFullChargeDate: isFullyCharged
         ? new Date()
         : (currentBattery?.lastFullChargeDate ?? null),
+      lastPullDate: new Date(),
     }
     await storage.setItem<Battery>('battery', battery)
   }

@@ -8,6 +8,7 @@ export default defineEventHandler(async () => {
     data: {
       percentage: battery.percentage,
       lastFullChargeDate: battery.lastFullChargeDate,
+      lastPullDate: battery.lastPullDate,
     },
   }
 })

@@ -229,6 +229,7 @@ struct CanvasStatusService {
     struct BatteryData: Decodable {
         let percentage: Int
         let lastFullChargeDate: String?
+        let lastPullDate: String?
     }
 
     struct ResponseEnvelope: Decodable {
@@ -245,7 +246,7 @@ struct CanvasStatusService {
                 }
 
                 if let rawPercentage = try? container.decode(Int.self) {
-                    self = .batteryData(BatteryData(percentage: rawPercentage, lastFullChargeDate: nil))
+                    self = .batteryData(BatteryData(percentage: rawPercentage, lastFullChargeDate: nil, lastPullDate: nil))
                     return
                 }
 
