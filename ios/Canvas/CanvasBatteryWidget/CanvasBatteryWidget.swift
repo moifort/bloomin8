@@ -366,8 +366,10 @@ private struct CanvasBatteryWidgetView: View {
                 widgetContent(in: geometry)
                 VStack(alignment: .trailing) {
                     daysIndicator
-                    Spacer()
-                    lastPullIndicator
+                    if widgetFamily != .systemSmall {
+                        Spacer()
+                        lastPullIndicator
+                    }
                 }
             }
             .containerBackground(for: .widget) {
@@ -393,6 +395,12 @@ private struct CanvasBatteryWidgetView: View {
                     // Stack pour le pourcentage
                     VStack(alignment: .leading, spacing: 0) {
                         batteryPercentageView(in: geometry)
+                    }
+                    
+                    
+                    // Stack pour lastPullDate (aligné à gauche)
+                    VStack(alignment: .leading, spacing: 0) {
+                        lastPullIndicator
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -480,7 +488,12 @@ private struct CanvasBatteryWidgetView: View {
 
     // Composant: Texte du pourcentage
     private func batteryPercentageView(in geometry: GeometryProxy) -> some View {
-        let fontSize = geometry.size.height * 0.40
+        let fontSize: CGFloat
+        if widgetFamily == .systemSmall {
+            fontSize = geometry.size.height * 0.30  // Réduit pour le widget small
+        } else {
+            fontSize = geometry.size.height * 0.40
+        }
 
         return Group {
             if let percentage = entry.percentage {
@@ -488,7 +501,7 @@ private struct CanvasBatteryWidgetView: View {
                     .font(.system(size: fontSize, weight: .regular, design: .default))
                     .foregroundStyle(.primary)
                     .widgetAccentable()
-                    .padding(.top, 10)
+                    .padding(.top, widgetFamily == .systemSmall ? 5 : 10)
             } else {
                 Text("--")
                     .font(.system(size: fontSize, weight: .regular, design: .default))
