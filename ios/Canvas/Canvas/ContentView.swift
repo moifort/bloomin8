@@ -9,6 +9,7 @@ struct ContentView: View {
         NavigationStack {
             Form {
                 configurationSection
+                quietHoursSection
                 batterySection
                 photoSection
             }
@@ -81,6 +82,36 @@ struct ContentView: View {
             } label: {
                 Label("Intervalle", systemImage: "clock")
             }
+        }
+    }
+
+    private var quietHoursSection: some View {
+        Section {
+            Toggle(isOn: $viewModel.quietHoursEnabled) {
+                Label("Mode nuit", systemImage: "moon.fill")
+            }
+
+            if viewModel.quietHoursEnabled {
+                LabeledContent {
+                    Text("23h – 7h")
+                        .foregroundStyle(.secondary)
+                } label: {
+                    Label("Horaires", systemImage: "clock")
+                }
+
+                NavigationLink {
+                    TimeZonePickerView(selection: $viewModel.quietHoursTimezone)
+                } label: {
+                    LabeledContent {
+                        Text(viewModel.quietHoursTimezone.replacingOccurrences(of: "_", with: " "))
+                            .foregroundStyle(.secondary)
+                    } label: {
+                        Label("Fuseau horaire", systemImage: "globe")
+                    }
+                }
+            }
+        } footer: {
+            Text(String(localized: "Pause le défilement des images entre 23h et 7h dans le fuseau horaire sélectionné. Le Canvas reste en veille pendant cette période."))
         }
     }
 
@@ -275,6 +306,40 @@ struct ContentView: View {
 
 #Preview("Default") {
     ContentView()
+}
+
+struct TimeZonePickerView: View {
+    @Binding var selection: String
+    @State private var searchText = ""
+    @Environment(\.dismiss) private var dismiss
+
+    private var filteredTimezones: [String] {
+        let all = TimeZone.knownTimeZoneIdentifiers
+        guard !searchText.isEmpty else { return all }
+        return all.filter { $0.localizedCaseInsensitiveContains(searchText) }
+    }
+
+    var body: some View {
+        List(filteredTimezones, id: \.self) { tz in
+            Button {
+                selection = tz
+                dismiss()
+            } label: {
+                HStack {
+                    Text(tz.replacingOccurrences(of: "_", with: " "))
+                    Spacer()
+                    if tz == selection {
+                        Image(systemName: "checkmark")
+                            .foregroundStyle(.blue)
+                    }
+                }
+            }
+            .foregroundStyle(.primary)
+        }
+        .searchable(text: $searchText, prompt: "Rechercher")
+        .navigationTitle("Fuseau horaire")
+        .navigationBarTitleDisplayMode(.inline)
+    }
 }
 
 @MainActor

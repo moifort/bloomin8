@@ -96,6 +96,16 @@
         }
       }
     },
+    "23h – 7h" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "11 PM – 7 AM"
+          }
+        }
+      }
+    },
     "Accès Photos refusé." : {
       "localizations" : {
         "en" : {
@@ -247,7 +257,14 @@
       }
     },
     "Dernier contact" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Last contact"
+          }
+        }
+      }
     },
     "Dernière charge complète" : {
       "localizations" : {
@@ -285,6 +302,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Error"
+          }
+        }
+      }
+    },
+    "Fuseau horaire" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time zone"
+          }
+        }
+      }
+    },
+    "Horaires" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schedule"
           }
         }
       }
@@ -365,6 +402,26 @@
         }
       }
     },
+    "Mode nuit" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quiet hours"
+          }
+        }
+      }
+    },
+    "Pause le défilement des images entre 23h et 7h dans le fuseau horaire sélectionné. Le Canvas reste en veille pendant cette période." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pauses image rotation between 11 PM and 7 AM in the selected time zone. The Canvas stays asleep during this period."
+          }
+        }
+      }
+    },
     "OK" : {
       "localizations" : {
         "en" : {
@@ -401,6 +458,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "To start the playlist, the Canvas must be accessible on the network. Wake it up from the BLOOMIN8 app"
+          }
+        }
+      }
+    },
+    "Rechercher" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search"
           }
         }
       }

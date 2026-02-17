@@ -95,9 +95,15 @@ struct PlaylistService {
         let message: String?
     }
 
+    struct QuietHoursPayload: Encodable {
+        let enabled: Bool
+        let timezone: String
+    }
+
     struct StartPlaylistPayload: Encodable {
         let canvasUrl: String
         let cronIntervalInHours: Int
+        let quietHours: QuietHoursPayload?
     }
 
     enum PlaylistError: LocalizedError {
@@ -125,7 +131,7 @@ struct PlaylistService {
         self.session = session
     }
 
-    func start(canvasURL: URL, cronIntervalInHours: Int) async throws -> String {
+    func start(canvasURL: URL, cronIntervalInHours: Int, quietHours: QuietHoursPayload? = nil) async throws -> String {
         let endpoint = baseURL
             .appendingPathComponent("playlist")
             .appendingPathComponent("start")
@@ -137,7 +143,8 @@ struct PlaylistService {
         request.httpBody = try JSONEncoder().encode(
             StartPlaylistPayload(
                 canvasUrl: canvasURL.absoluteString,
-                cronIntervalInHours: cronIntervalInHours
+                cronIntervalInHours: cronIntervalInHours,
+                quietHours: quietHours
             )
         )
 

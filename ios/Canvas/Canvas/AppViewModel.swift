@@ -10,6 +10,8 @@ final class AppViewModel {
     private static let batteryPercentageDefaultsKey = "canvas.battery.percentage"
     private static let lastFullChargeDateDefaultsKey = "canvas.battery.last-full-charge-date"
     private static let lastPullDateDefaultsKey = "canvas.battery.last-pull-date"
+    private static let quietHoursEnabledDefaultsKey = "canvas.quiet-hours.enabled"
+    private static let quietHoursTimezoneDefaultsKey = "canvas.quiet-hours.timezone"
     private static let sharedDefaultsSuiteName = "group.polyforms.canvas"
     private static let defaultServerURL = "http://192.168.0.165:3000"
     private static let defaultCanvasURL = "http://192.168.0.174"
@@ -28,6 +30,12 @@ final class AppViewModel {
         }
     }
     var cronIntervalInHours: String = "3"
+    var quietHoursEnabled: Bool {
+        didSet { persistQuietHoursEnabled() }
+    }
+    var quietHoursTimezone: String {
+        didSet { persistQuietHoursTimezone() }
+    }
 
     private(set) var isUploading = false
     private(set) var isStartingPlaylist = false
@@ -63,6 +71,8 @@ final class AppViewModel {
         self.sharedDefaults = UserDefaults(suiteName: Self.sharedDefaultsSuiteName)
         self.serverURL = userDefaults.string(forKey: Self.serverURLDefaultsKey) ?? Self.defaultServerURL
         self.canvasURL = userDefaults.string(forKey: Self.canvasURLDefaultsKey) ?? Self.defaultCanvasURL
+        self.quietHoursEnabled = userDefaults.bool(forKey: Self.quietHoursEnabledDefaultsKey)
+        self.quietHoursTimezone = userDefaults.string(forKey: Self.quietHoursTimezoneDefaultsKey) ?? TimeZone.current.identifier
 
         if let cached = userDefaults.object(forKey: Self.batteryPercentageDefaultsKey) as? Int {
             self.canvasBatteryPercentage = cached
@@ -361,9 +371,13 @@ final class AppViewModel {
 
         let service = PlaylistService(baseURL: baseURL)
         do {
+            let quietHoursPayload = quietHoursEnabled
+                ? PlaylistService.QuietHoursPayload(enabled: true, timezone: quietHoursTimezone)
+                : nil
             statusText = try await service.start(
                 canvasURL: canvasURL,
-                cronIntervalInHours: cronIntervalInHours
+                cronIntervalInHours: cronIntervalInHours,
+                quietHours: quietHoursPayload
             )
         } catch {
             errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
@@ -429,5 +443,13 @@ final class AppViewModel {
         let timestamp = lastPullDate.timeIntervalSince1970
         userDefaults.set(timestamp, forKey: Self.lastPullDateDefaultsKey)
         sharedDefaults?.set(timestamp, forKey: Self.lastPullDateDefaultsKey)
+    }
+
+    private func persistQuietHoursEnabled() {
+        userDefaults.set(quietHoursEnabled, forKey: Self.quietHoursEnabledDefaultsKey)
+    }
+
+    private func persistQuietHoursTimezone() {
+        userDefaults.set(quietHoursTimezone, forKey: Self.quietHoursTimezoneDefaultsKey)
     }
 }

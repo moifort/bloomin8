@@ -4,13 +4,14 @@ import type { CanvasUrl, Hour, ServerUrl } from '~/config/types'
 import { Images } from '~/images/index'
 import type { ImageId } from '~/images/types'
 import { PlaylistId } from '~/playlist/primitives'
-import type { Playlist as PlaylistType } from '~/playlist/type'
+import type { Playlist as PlaylistType, QuietHours } from '~/playlist/type'
 
 export namespace Playlist {
   export const start = async (
     serverUrl: ServerUrl,
     canvasUrl: CanvasUrl,
     cronIntervalInHours: Hour,
+    quietHours?: QuietHours,
     playlistId = PlaylistId('8d0fc632-378b-4fac-903c-96b4feb7d1c4'),
   ) => {
     const storage = useStorage('playlist')
@@ -22,6 +23,7 @@ export namespace Playlist {
       canvasUrl,
       cronIntervalInHours,
       availableImagesId,
+      quietHours,
     })
     await Canvas.wakeUp(canvasUrl, serverUrl)
     return playlistId
@@ -33,7 +35,7 @@ export namespace Playlist {
     const storage = useStorage('playlist')
     const playlist = await storage.getItem<PlaylistType>(playlistId)
     if (!playlist) return 'playlist-not-found' as const
-    const { availableImagesId, status, cronIntervalInHours } = playlist
+    const { availableImagesId, status, cronIntervalInHours, quietHours } = playlist
     return await match(status)
       .with('in-progress', async () => {
         const ifEmptyLoopAvailableImagesId =
@@ -48,11 +50,39 @@ export namespace Playlist {
         })
         return {
           nextImage,
-          displayedAt: new Date(Date.now() + cronIntervalInHours * 60 * 60 * 1000),
+          displayedAt: applyQuietHours(
+            new Date(Date.now() + cronIntervalInHours * 60 * 60 * 1000),
+            quietHours,
+          ),
         }
       })
       .with('stop', () => 'playlist-stopped' as const)
       .exhaustive()
+  }
+
+  const applyQuietHours = (date: Date, quietHours?: QuietHours): Date => {
+    if (!quietHours?.enabled) return date
+
+    const { timezone, start, end } = quietHours
+
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: false,
+    }).formatToParts(date)
+
+    const hour = Number.parseInt(parts.find((p) => p.type === 'hour')?.value ?? '0', 10)
+    const minute = Number.parseInt(parts.find((p) => p.type === 'minute')?.value ?? '0', 10)
+
+    // Outside quiet window → no change
+    if (hour >= end && hour < start) return date
+
+    // Compute time until `end` (7h)
+    const hoursUntilEnd = hour >= start ? 24 - hour + end : end - hour
+    const msUntilEnd = (hoursUntilEnd * 60 - minute) * 60 * 1000
+
+    return new Date(date.getTime() + msUntilEnd)
   }
 
   const getRandomImageId = (availableImagesId: ImageId[]) => {
