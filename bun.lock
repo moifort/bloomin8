@@ -5,6 +5,7 @@
     "": {
       "name": "nitro-app",
       "dependencies": {
+        "consola": "3.4.2",
         "ts-pattern": "5.9.0",
         "zod": "4.3.6",
       },
