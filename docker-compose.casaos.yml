@@ -15,12 +15,17 @@ services:
     hostname: canvas-server
     image: moifort/bloomin8:latest
     labels:
-      icon: https://icon.casaos.io/main/all/canvas-server.png
+      icon: https://cdn-icons-png.flaticon.com/512/4975/4975674.png
     ports:
       - target: 3000
         published: "3000"
         protocol: tcp
     pull_policy: always
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
       interval: 30s

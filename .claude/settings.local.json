@@ -19,7 +19,15 @@
       "Bash(brew install:*)",
       "Bash(gh repo create:*)",
       "Skill(commit-commands:commit)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(xcrun simctl list:*)",
+      "Bash(grep:*)",
+      "Bash(xcode-select:*)",
+      "Bash(for f in Capture*20.28*)",
+      "Bash(do cp \"$f\" /Users/thibaut/Code/bloomin8/screenshot-widget-temp.png)",
+      "Bash(done)",
+      "Bash(for f in Capture*20.29*)",
+      "Bash(do cp \"$f\" /Users/thibaut/Code/bloomin8/screenshot-app-temp.png)"
     ]
   },
   "outputStyle": "Explanatory",
