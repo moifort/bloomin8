@@ -85,6 +85,22 @@ export namespace Playlist {
     return new Date(date.getTime() + msUntilEnd)
   }
 
+  export const getProgress = async (
+    playlistId = PlaylistId('8d0fc632-378b-4fac-903c-96b4feb7d1c4'),
+  ) => {
+    const storage = useStorage('playlist')
+    const playlist = await storage.getItem<PlaylistType>(playlistId)
+    if (!playlist) return 'playlist-not-found' as const
+    const totalImages = await Images.getAllImagesId()
+    const remaining = playlist.availableImagesId.length
+    const total = totalImages.length
+    return {
+      displayed: total - remaining,
+      total,
+      status: playlist.status,
+    }
+  }
+
   const getRandomImageId = (availableImagesId: ImageId[]) => {
     if (availableImagesId.length === 0) throw new Error('availableImagesId must not be empty')
     if (availableImagesId.length === 1) return availableImagesId[0]
