@@ -89,10 +89,46 @@ struct UploadService {
     }
 }
 
+struct PlaylistProgress {
+    let displayed: Int
+    let total: Int
+}
+
 struct PlaylistService {
     struct ResponseEnvelope: Decodable {
         let status: Int?
         let message: String?
+    }
+
+    struct ProgressResponseEnvelope: Decodable {
+        enum Payload: Decodable {
+            case progress(ProgressData)
+            case notFound
+
+            struct ProgressData: Decodable {
+                let displayed: Int
+                let total: Int
+            }
+
+            init(from decoder: Decoder) throws {
+                let container = try decoder.singleValueContainer()
+                if let data = try? container.decode(ProgressData.self) {
+                    self = .progress(data)
+                    return
+                }
+                if let raw = try? container.decode(String.self), raw == "playlist-not-found" {
+                    self = .notFound
+                    return
+                }
+                throw DecodingError.dataCorruptedError(
+                    in: container,
+                    debugDescription: "Progress payload format is not supported."
+                )
+            }
+        }
+
+        let status: Int?
+        let data: Payload?
     }
 
     struct QuietHoursPayload: Encodable {
@@ -163,6 +199,43 @@ struct PlaylistService {
         if (200 ..< 300).contains(http.statusCode) {
             let envelope = try? JSONDecoder().decode(ResponseEnvelope.self, from: data)
             return envelope?.message ?? String(localized: "Playlist lancée.")
+        }
+
+        let decodedMessage = (try? JSONDecoder().decode(ResponseEnvelope.self, from: data))?.message
+        let fallbackMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+        throw PlaylistError.server(statusCode: http.statusCode, message: decodedMessage ?? fallbackMessage)
+    }
+
+    func getProgress() async throws -> PlaylistProgress? {
+        let endpoint = baseURL
+            .appendingPathComponent("playlist")
+            .appendingPathComponent("progress")
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 15
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw PlaylistError.transport(error)
+        }
+
+        guard let http = response as? HTTPURLResponse else {
+            throw PlaylistError.invalidHTTPResponse
+        }
+
+        if (200 ..< 300).contains(http.statusCode) {
+            let envelope = try? JSONDecoder().decode(ProgressResponseEnvelope.self, from: data)
+            guard let payload = envelope?.data else { return nil }
+            switch payload {
+            case let .progress(progressData):
+                return PlaylistProgress(displayed: progressData.displayed, total: progressData.total)
+            case .notFound:
+                return nil
+            }
         }
 
         let decodedMessage = (try? JSONDecoder().decode(ResponseEnvelope.self, from: data))?.message

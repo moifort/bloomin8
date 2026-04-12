@@ -150,6 +150,16 @@ struct ContentView: View {
                     Label("Dernier contact", systemImage: "antenna.radiowaves.left.and.right")
                 }
             }
+
+            if let progress = viewModel.playlistProgress {
+                LabeledContent {
+                    Text("\(progress.displayed)/\(progress.total)")
+                        .foregroundStyle(.secondary)
+                        .contentTransition(.numericText())
+                } label: {
+                    Label("Playlist", systemImage: "photo.stack")
+                }
+            }
         } footer: {
             if let percentage = viewModel.canvasBatteryPercentage, percentage < 10 {
                 Text("⚠️ Batterie faible, pensez à recharger le Canvas")

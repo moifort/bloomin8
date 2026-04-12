@@ -58,6 +58,7 @@ final class AppViewModel {
             persistLastPullDate()
         }
     }
+    private(set) var playlistProgress: PlaylistProgress?
 
     private let maxConcurrentUploads = 5
     private let userDefaults: UserDefaults
@@ -119,12 +120,18 @@ final class AppViewModel {
             lastFullChargeDate = nil
             lastFullChargeDays = nil
             lastPullDate = nil
+            playlistProgress = nil
             return
         }
 
-        let service = CanvasStatusService(baseURL: baseURL)
+        let batteryService = CanvasStatusService(baseURL: baseURL)
+        let playlistService = PlaylistService(baseURL: baseURL)
+
+        async let batteryResult = batteryService.getBatteryData()
+        async let progressResult = playlistService.getProgress()
+
         do {
-            if let batteryData = try await service.getBatteryData() {
+            if let batteryData = try await batteryResult {
                 canvasBatteryPercentage = batteryData.percentage
 
                 let dateFormatter = ISO8601DateFormatter()
@@ -157,6 +164,8 @@ final class AppViewModel {
             lastFullChargeDays = nil
             lastPullDate = nil
         }
+
+        playlistProgress = try? await progressResult
     }
 
     func requestPhotoAccess() {
