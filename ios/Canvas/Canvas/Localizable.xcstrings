@@ -412,22 +412,22 @@
         }
       }
     },
-    "Pause le défilement des images entre 23h et 7h dans le fuseau horaire sélectionné. Le Canvas reste en veille pendant cette période." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pauses image rotation between 11 PM and 7 AM in the selected time zone. The Canvas stays asleep during this period."
-          }
-        }
-      }
-    },
     "OK" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "OK"
+          }
+        }
+      }
+    },
+    "Pause le défilement des images entre 23h et 7h dans le fuseau horaire sélectionné. Le Canvas reste en veille pendant cette période." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pauses image rotation between 11 PM and 7 AM in the selected time zone. The Canvas stays asleep during this period."
           }
         }
       }
@@ -441,6 +441,9 @@
           }
         }
       }
+    },
+    "Playlist" : {
+
     },
     "Playlist lancée." : {
       "localizations" : {
