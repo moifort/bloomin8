@@ -13,6 +13,15 @@ Content-Type: application/json
   "cronIntervalInHours": 3
 }
 
+### PAUSE
+POST {{base}}/playlist/pause
+
+### RESUME
+POST {{base}}/playlist/resume
+
+### GET progress
+GET {{base}}/playlist/progress
+
 ### POST upload image
 POST {{base}}/upload?orientation=P
 Content-Type: application/octet-stream
