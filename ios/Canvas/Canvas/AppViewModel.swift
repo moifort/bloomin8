@@ -39,6 +39,7 @@ final class AppViewModel {
 
     private(set) var isUploading = false
     private(set) var isStartingPlaylist = false
+    private(set) var isPausingPlaylist = false
     private(set) var progress = UploadProgress.empty
     private(set) var statusText: String = ""
     private(set) var errorText: String?
@@ -66,6 +67,7 @@ final class AppViewModel {
 
     private var uploadTask: Task<Void, Never>?
     private var playlistStartTask: Task<Void, Never>?
+    private var playlistPauseTask: Task<Void, Never>?
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
@@ -100,7 +102,23 @@ final class AppViewModel {
     }
 
     var canStartPlaylist: Bool {
-        !isUploading && !isStartingPlaylist
+        !isUploading && !isStartingPlaylist && !isPausingPlaylist
+    }
+
+    var isPlaylistRunning: Bool {
+        playlistProgress?.status == .inProgress
+    }
+
+    var isPlaylistPaused: Bool {
+        playlistProgress?.status == .paused
+    }
+
+    var canPausePlaylist: Bool {
+        isPlaylistRunning && !isUploading && !isStartingPlaylist && !isPausingPlaylist
+    }
+
+    var canResumePlaylist: Bool {
+        isPlaylistPaused && !isUploading && !isStartingPlaylist && !isPausingPlaylist
     }
 
     func bootstrap() async {
@@ -247,6 +265,34 @@ final class AppViewModel {
         }
     }
 
+    func pausePlaylist() {
+        errorText = nil
+
+        guard let url = validatedHTTPURL(serverURL) else {
+            errorText = AppError.invalidServerURL.localizedDescription
+            return
+        }
+
+        playlistPauseTask?.cancel()
+        playlistPauseTask = Task {
+            await runPlaylistPause(baseURL: url)
+        }
+    }
+
+    func resumePlaylist() {
+        errorText = nil
+
+        guard let url = validatedHTTPURL(serverURL) else {
+            errorText = AppError.invalidServerURL.localizedDescription
+            return
+        }
+
+        playlistPauseTask?.cancel()
+        playlistPauseTask = Task {
+            await runPlaylistResume(baseURL: url)
+        }
+    }
+
     private func runUpload(albumId: String, baseURL: URL) async {
         isUploading = true
         progress = .empty
@@ -388,6 +434,47 @@ final class AppViewModel {
                 cronIntervalInHours: cronIntervalInHours,
                 quietHours: quietHoursPayload
             )
+        } catch {
+            errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+
+        await refreshCanvasBattery()
+    }
+
+    private func runPlaylistPause(baseURL: URL) async {
+        isPausingPlaylist = true
+        statusText = String(localized: "Mise en pause...")
+        errorText = nil
+
+        defer {
+            isPausingPlaylist = false
+            playlistPauseTask = nil
+        }
+
+        let service = PlaylistService(baseURL: baseURL)
+        do {
+            statusText = try await service.pause()
+        } catch {
+            errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+
+        await refreshCanvasBattery()
+    }
+
+    private func runPlaylistResume(baseURL: URL) async {
+        isPausingPlaylist = true
+        statusText = String(localized: "Reprise...")
+        errorText = nil
+
+        defer {
+            isPausingPlaylist = false
+            playlistPauseTask = nil
+        }
+
+        let service = PlaylistService(baseURL: baseURL)
+        do {
+            let result = try await service.resume()
+            statusText = result.message
         } catch {
             errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }

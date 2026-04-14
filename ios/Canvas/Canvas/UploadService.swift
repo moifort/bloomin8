@@ -90,14 +90,36 @@ struct UploadService {
 }
 
 struct PlaylistProgress {
+    enum Status: String, Decodable {
+        case stop
+        case inProgress = "in-progress"
+        case paused
+    }
+
     let displayed: Int
     let total: Int
+    let status: Status
 }
 
 struct PlaylistService {
     struct ResponseEnvelope: Decodable {
         let status: Int?
         let message: String?
+    }
+
+    struct ResumeResponseEnvelope: Decodable {
+        struct ResumeData: Decodable {
+            let wokeUp: Bool
+        }
+
+        let status: Int?
+        let message: String?
+        let data: ResumeData?
+    }
+
+    struct ResumeResult {
+        let message: String
+        let wokeUp: Bool
     }
 
     struct ProgressResponseEnvelope: Decodable {
@@ -108,6 +130,7 @@ struct PlaylistService {
             struct ProgressData: Decodable {
                 let displayed: Int
                 let total: Int
+                let status: PlaylistProgress.Status
             }
 
             init(from decoder: Decoder) throws {
@@ -232,10 +255,84 @@ struct PlaylistService {
             guard let payload = envelope?.data else { return nil }
             switch payload {
             case let .progress(progressData):
-                return PlaylistProgress(displayed: progressData.displayed, total: progressData.total)
+                return PlaylistProgress(
+                    displayed: progressData.displayed,
+                    total: progressData.total,
+                    status: progressData.status
+                )
             case .notFound:
                 return nil
             }
+        }
+
+        let decodedMessage = (try? JSONDecoder().decode(ResponseEnvelope.self, from: data))?.message
+        let fallbackMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+        throw PlaylistError.server(statusCode: http.statusCode, message: decodedMessage ?? fallbackMessage)
+    }
+
+    func pause() async throws -> String {
+        let endpoint = baseURL
+            .appendingPathComponent("playlist")
+            .appendingPathComponent("pause")
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw PlaylistError.transport(error)
+        }
+
+        guard let http = response as? HTTPURLResponse else {
+            throw PlaylistError.invalidHTTPResponse
+        }
+
+        if (200 ..< 300).contains(http.statusCode) {
+            let envelope = try? JSONDecoder().decode(ResponseEnvelope.self, from: data)
+            return envelope?.message ?? String(localized: "Playlist en pause")
+        }
+
+        let decodedMessage = (try? JSONDecoder().decode(ResponseEnvelope.self, from: data))?.message
+        let fallbackMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+        throw PlaylistError.server(statusCode: http.statusCode, message: decodedMessage ?? fallbackMessage)
+    }
+
+    func resume() async throws -> ResumeResult {
+        let endpoint = baseURL
+            .appendingPathComponent("playlist")
+            .appendingPathComponent("resume")
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw PlaylistError.transport(error)
+        }
+
+        guard let http = response as? HTTPURLResponse else {
+            throw PlaylistError.invalidHTTPResponse
+        }
+
+        if (200 ..< 300).contains(http.statusCode) {
+            let envelope = try? JSONDecoder().decode(ResumeResponseEnvelope.self, from: data)
+            let wokeUp = envelope?.data?.wokeUp ?? false
+            let message = envelope?.message ?? (
+                wokeUp
+                    ? String(localized: "Playlist reprise")
+                    : String(localized: "Reprise planifiée — le Canvas reprendra au prochain réveil (sous 24h)")
+            )
+            return ResumeResult(message: message, wokeUp: wokeUp)
         }
 
         let decodedMessage = (try? JSONDecoder().decode(ResponseEnvelope.self, from: data))?.message

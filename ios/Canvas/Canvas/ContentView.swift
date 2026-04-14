@@ -153,11 +153,17 @@ struct ContentView: View {
 
             if let progress = viewModel.playlistProgress {
                 LabeledContent {
-                    Text("\(progress.displayed)/\(progress.total)")
-                        .foregroundStyle(.secondary)
-                        .contentTransition(.numericText())
+                    HStack(spacing: 6) {
+                        if progress.status == .paused {
+                            Image(systemName: "pause.circle.fill")
+                                .foregroundStyle(.orange)
+                        }
+                        Text("\(progress.displayed)/\(progress.total)")
+                            .foregroundStyle(.secondary)
+                            .contentTransition(.numericText())
+                    }
                 } label: {
-                    Label("Playlist", systemImage: "photo.stack")
+                    Label(progress.status == .paused ? "Playlist (en pause)" : "Playlist", systemImage: "photo.stack")
                 }
             }
         } footer: {
@@ -253,14 +259,31 @@ struct ContentView: View {
                 }
                 .disabled(!viewModel.canStartUpload)
 
-                Button(viewModel.isStartingPlaylist ? "Démarrage..." : "Démarrer la playlist") {
-                    viewModel.startPlaylist()
-                }
-                .disabled(!viewModel.canStartPlaylist)
+                playlistActionButton
             } footer: {
                 Text("Pour lancer la playlist le canvas doit être accessible sur le réseau. Reveillez le a partir de l'application BLOOMIN8")
                     .font(.footnote)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var playlistActionButton: some View {
+        if viewModel.isPlaylistRunning {
+            Button(viewModel.isPausingPlaylist ? "Mise en pause..." : "Mettre en pause", role: .destructive) {
+                viewModel.pausePlaylist()
+            }
+            .disabled(!viewModel.canPausePlaylist)
+        } else if viewModel.isPlaylistPaused {
+            Button(viewModel.isPausingPlaylist ? "Reprise..." : "Reprendre") {
+                viewModel.resumePlaylist()
+            }
+            .disabled(!viewModel.canResumePlaylist)
+        } else {
+            Button(viewModel.isStartingPlaylist ? "Démarrage..." : "Démarrer la playlist") {
+                viewModel.startPlaylist()
+            }
+            .disabled(!viewModel.canStartPlaylist)
         }
     }
 
