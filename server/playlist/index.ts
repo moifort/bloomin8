@@ -1,3 +1,4 @@
+import { consola } from 'consola'
 import { match } from 'ts-pattern'
 import { Canvas } from '~/canvas/index'
 import type { CanvasUrl, Hour, ServerUrl } from '~/config/types'
@@ -57,7 +58,38 @@ export namespace Playlist {
         }
       })
       .with('stop', () => 'playlist-stopped' as const)
+      .with('paused', () => 'playlist-paused' as const)
       .exhaustive()
+  }
+
+  export const pause = async (playlistId = PlaylistId('8d0fc632-378b-4fac-903c-96b4feb7d1c4')) => {
+    const storage = useStorage('playlist')
+    const playlist = await storage.getItem<PlaylistType>(playlistId)
+    if (!playlist) return 'playlist-not-found' as const
+    if (playlist.status !== 'in-progress') return 'not-playing' as const
+    await storage.setItem<PlaylistType>(playlistId, { ...playlist, status: 'paused' })
+    return playlistId
+  }
+
+  export const resume = async (
+    serverUrl: ServerUrl,
+    playlistId = PlaylistId('8d0fc632-378b-4fac-903c-96b4feb7d1c4'),
+  ) => {
+    const storage = useStorage('playlist')
+    const playlist = await storage.getItem<PlaylistType>(playlistId)
+    if (!playlist) return 'playlist-not-found' as const
+    if (playlist.status !== 'paused') return 'not-paused' as const
+    await storage.setItem<PlaylistType>(playlistId, { ...playlist, status: 'in-progress' })
+    let wokeUp = false
+    try {
+      await Canvas.wakeUp(playlist.canvasUrl, serverUrl)
+      wokeUp = true
+    } catch (error) {
+      consola
+        .withTag('playlist')
+        .warn('canvas unreachable on resume, will resume at next natural pull', error)
+    }
+    return { playlistId, wokeUp }
   }
 
   const applyQuietHours = (date: Date, quietHours?: QuietHours): Date => {

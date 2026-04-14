@@ -51,6 +51,14 @@ export namespace Canvas {
     data: { next_cron_time: null },
   })
 
+  export const deferPull = async (hours = 24) => ({
+    status: 204,
+    message: 'Playlist paused',
+    data: {
+      next_cron_time: CanvasDate(new Date(Date.now() + hours * 60 * 60 * 1000)),
+    },
+  })
+
   export const saveBattery = async (level: Percentage) => {
     const storage = useStorage('canvas')
     const currentBattery = await storage.getItem<Battery>('battery')

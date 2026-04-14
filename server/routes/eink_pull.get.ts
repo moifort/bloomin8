@@ -8,6 +8,7 @@ export default defineEventHandler(async () => {
   if (nextImage === 'playlist-not-found') return Canvas.stopPulling()
   if (nextImage === 'playlist-stopped') return Canvas.stopPulling()
   if (nextImage === 'playlist-empty') return Canvas.stopPulling()
+  if (nextImage === 'playlist-paused') return Canvas.deferPull(24)
   if (nextImage === 'image-not-found') return Canvas.imageNotFound()
   return Canvas.getNextImage(serverUrl, nextImage.nextImage.url, nextImage.displayedAt)
 })
