@@ -624,6 +624,86 @@
           }
         }
       }
+    },
+    "Mettre en pause" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause"
+          }
+        }
+      }
+    },
+    "Mise en pause..." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pausing..."
+          }
+        }
+      }
+    },
+    "Playlist (en pause)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playlist (paused)"
+          }
+        }
+      }
+    },
+    "Playlist en pause" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playlist paused"
+          }
+        }
+      }
+    },
+    "Playlist reprise" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playlist resumed"
+          }
+        }
+      }
+    },
+    "Reprendre" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resume"
+          }
+        }
+      }
+    },
+    "Reprise..." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resuming..."
+          }
+        }
+      }
+    },
+    "Reprise planifiée — le Canvas reprendra au prochain réveil (sous 24h)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resume scheduled — the Canvas will restart at its next wake-up (within 24h)"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
