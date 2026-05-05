@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ContentView: View {
     @State private var viewModel = AppViewModel()
@@ -37,11 +38,6 @@ struct ContentView: View {
                 viewModel.reloadAlbums()
             }
         }
-        .onChange(of: viewModel.serverURL) { _, _ in
-            Task {
-                await viewModel.refreshCanvasBattery()
-            }
-        }
         .alert("Erreur", isPresented: $showingError, presenting: viewModel.errorText) { _ in
             Button("OK", role: .cancel) { }
         } message: { error in
@@ -57,23 +53,31 @@ struct ContentView: View {
     private var configurationSection: some View {
         Section {
             LabeledContent {
-                TextField("http://192.168.0.165:3000", text: $viewModel.serverURL)
-                    .keyboardType(.URL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .multilineTextAlignment(.trailing)
+                Text(viewModel.serverURL)
+                    .font(.callout.monospaced())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
             } label: {
                 Label("Serveur", systemImage: "server.rack")
             }
 
             LabeledContent {
-                TextField("http://192.168.0.174", text: $viewModel.canvasURL)
-                    .keyboardType(.URL)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .multilineTextAlignment(.trailing)
+                Text(viewModel.canvasURL)
+                    .font(.callout.monospaced())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
             } label: {
                 Label("BLOOMIN8", systemImage: "photo.on.rectangle.angled")
+            }
+
+            Button {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            } label: {
+                Label("Modifier dans Réglages", systemImage: "gearshape")
             }
 
             LabeledContent {

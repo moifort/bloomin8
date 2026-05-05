@@ -6,8 +6,6 @@ import WidgetKit
 @MainActor
 @Observable
 final class AppViewModel {
-    private static let serverURLDefaultsKey = "canvas.server.url"
-    private static let canvasURLDefaultsKey = "canvas.device.url"
     private static let batteryPercentageDefaultsKey = "canvas.battery.percentage"
     private static let lastFullChargeDateDefaultsKey = "canvas.battery.last-full-charge-date"
     private static let lastPullDateDefaultsKey = "canvas.battery.last-pull-date"
@@ -15,23 +13,12 @@ final class AppViewModel {
     private static let playlistTotalDefaultsKey = "canvas.playlist.total"
     private static let quietHoursEnabledDefaultsKey = "canvas.quiet-hours.enabled"
     private static let quietHoursTimezoneDefaultsKey = "canvas.quiet-hours.timezone"
-    private static let sharedDefaultsSuiteName = "group.polyforms.canvas"
-    private static let defaultServerURL = "http://192.168.0.165:3000"
-    private static let defaultCanvasURL = "http://192.168.0.174"
 
     private(set) var authorizationStatus: PHAuthorizationStatus = PhotoLibraryService.authorizationStatus()
     private(set) var albums: [PhotoAlbum] = []
     var selectedAlbumId: String?
-    var serverURL: String {
-        didSet {
-            persistServerURL()
-        }
-    }
-    var canvasURL: String {
-        didSet {
-            persistCanvasURL()
-        }
-    }
+    private(set) var serverURL: String
+    private(set) var canvasURL: String
     var cronIntervalInHours: Int = 3
     var quietHoursEnabled: Bool {
         didSet { persistQuietHoursEnabled() }
@@ -80,9 +67,13 @@ final class AppViewModel {
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
-        self.sharedDefaults = UserDefaults(suiteName: Self.sharedDefaultsSuiteName)
-        self.serverURL = userDefaults.string(forKey: Self.serverURLDefaultsKey) ?? Self.defaultServerURL
-        self.canvasURL = userDefaults.string(forKey: Self.canvasURLDefaultsKey) ?? Self.defaultCanvasURL
+        self.sharedDefaults = UserDefaults(suiteName: CanvasSettings.appGroupSuiteName)
+        self.serverURL = sharedDefaults?.string(forKey: CanvasSettings.serverURLKey)
+            ?? userDefaults.string(forKey: CanvasSettings.serverURLKey)
+            ?? CanvasSettings.defaultServerURL
+        self.canvasURL = sharedDefaults?.string(forKey: CanvasSettings.deviceURLKey)
+            ?? userDefaults.string(forKey: CanvasSettings.deviceURLKey)
+            ?? CanvasSettings.defaultDeviceURL
         self.quietHoursEnabled = userDefaults.bool(forKey: Self.quietHoursEnabledDefaultsKey)
         self.quietHoursTimezone = userDefaults.string(forKey: Self.quietHoursTimezoneDefaultsKey) ?? TimeZone.current.identifier
 
@@ -97,9 +88,21 @@ final class AppViewModel {
         if let timestamp = userDefaults.object(forKey: Self.lastPullDateDefaultsKey) as? Double {
             self.lastPullDate = Date(timeIntervalSince1970: timestamp)
         }
+    }
 
-        persistServerURL()
-        persistCanvasURL()
+    func reloadConfigFromSettings() {
+        let newServerURL = sharedDefaults?.string(forKey: CanvasSettings.serverURLKey)
+            ?? userDefaults.string(forKey: CanvasSettings.serverURLKey)
+            ?? CanvasSettings.defaultServerURL
+        let newCanvasURL = sharedDefaults?.string(forKey: CanvasSettings.deviceURLKey)
+            ?? userDefaults.string(forKey: CanvasSettings.deviceURLKey)
+            ?? CanvasSettings.defaultDeviceURL
+        if newServerURL != serverURL {
+            serverURL = newServerURL
+        }
+        if newCanvasURL != canvasURL {
+            canvasURL = newCanvasURL
+        }
     }
 
     var isPhotoAccessGranted: Bool {
@@ -142,6 +145,7 @@ final class AppViewModel {
     }
 
     func refreshCanvasBattery() async {
+        reloadConfigFromSettings()
         guard let baseURL = validatedHTTPURL(serverURL) else {
             canvasBatteryPercentage = nil
             lastFullChargeDate = nil
@@ -535,16 +539,6 @@ final class AppViewModel {
         }
 
         return url
-    }
-
-    private func persistServerURL() {
-        userDefaults.set(serverURL, forKey: Self.serverURLDefaultsKey)
-        sharedDefaults?.set(serverURL, forKey: Self.serverURLDefaultsKey)
-    }
-
-    private func persistCanvasURL() {
-        userDefaults.set(canvasURL, forKey: Self.canvasURLDefaultsKey)
-        sharedDefaults?.set(canvasURL, forKey: Self.canvasURLDefaultsKey)
     }
 
     private func persistCanvasBatteryPercentage() {
