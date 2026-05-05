@@ -77,11 +77,11 @@ struct ContentView: View {
             }
 
             Stepper(value: $viewModel.cronIntervalInHours, in: 1...168) {
-                LabeledContent {
+                HStack {
+                    Label("Intervalle", systemImage: "clock")
+                    Spacer()
                     Text("\(viewModel.cronIntervalInHours)h")
                         .foregroundStyle(.secondary)
-                } label: {
-                    Label("Intervalle", systemImage: "clock")
                 }
             }
             .onChange(of: viewModel.cronIntervalInHours) { _, newValue in
