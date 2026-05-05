@@ -362,12 +362,12 @@
         }
       }
     },
-    "Intervalle cron invalide (entier > 0 requis)." : {
+    "Intervalle mis à jour" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Invalid cron interval (positive integer required)."
+            "value" : "Interval updated"
           }
         }
       }
