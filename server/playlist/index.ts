@@ -92,6 +92,17 @@ export namespace Playlist {
     return { playlistId, wokeUp }
   }
 
+  export const updateInterval = async (
+    cronIntervalInHours: Hour,
+    playlistId = PlaylistId('8d0fc632-378b-4fac-903c-96b4feb7d1c4'),
+  ) => {
+    const storage = useStorage('playlist')
+    const playlist = await storage.getItem<PlaylistType>(playlistId)
+    if (!playlist) return 'playlist-not-found' as const
+    await storage.setItem<PlaylistType>(playlistId, { ...playlist, cronIntervalInHours })
+    return playlistId
+  }
+
   const applyQuietHours = (date: Date, quietHours?: QuietHours): Date => {
     if (!quietHours?.enabled) return date
 

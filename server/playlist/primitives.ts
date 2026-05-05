@@ -22,7 +22,10 @@ export const CanvasUrl = (value: unknown) => {
 
 export const Hour = (value: unknown) => {
   const validatedValue = z
-    .preprocess((value) => (typeof value === 'string' ? Number(value) : value), z.number())
+    .preprocess(
+      (value) => (typeof value === 'string' ? Number(value) : value),
+      z.number().int().min(1).max(168),
+    )
     .parse(value)
   return make<HourType>()(validatedValue)
 }
