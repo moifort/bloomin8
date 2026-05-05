@@ -91,6 +91,11 @@ struct ContentView: View {
                             .monospacedDigit()
                         Text("h")
                             .foregroundStyle(.secondary)
+                        if viewModel.isUpdatingInterval {
+                            ProgressView()
+                                .controlSize(.small)
+                                .padding(.leading, 4)
+                        }
                     }
 
                     Button {
@@ -108,6 +113,8 @@ struct ContentView: View {
                 guard (1...168).contains(newValue) else { return }
                 viewModel.updatePlaylistInterval(newValue)
             }
+        } footer: {
+            Text("Le nouvel intervalle sera appliqué au prochain réveil du Canvas.")
         }
     }
 

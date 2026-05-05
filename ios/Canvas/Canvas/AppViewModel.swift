@@ -60,6 +60,7 @@ final class AppViewModel {
         }
     }
     private(set) var playlistProgress: PlaylistProgress?
+    private(set) var isUpdatingInterval = false
 
     private let maxConcurrentUploads = 5
     private let userDefaults: UserDefaults
@@ -299,6 +300,11 @@ final class AppViewModel {
 
         playlistIntervalTask?.cancel()
         playlistIntervalTask = Task {
+            do {
+                try await Task.sleep(for: .milliseconds(500))
+            } catch {
+                return
+            }
             await runPlaylistUpdateInterval(baseURL: url, hours: hours)
         }
     }
@@ -493,7 +499,11 @@ final class AppViewModel {
     }
 
     private func runPlaylistUpdateInterval(baseURL: URL, hours: Int) async {
-        defer { playlistIntervalTask = nil }
+        isUpdatingInterval = true
+        defer {
+            isUpdatingInterval = false
+            playlistIntervalTask = nil
+        }
 
         let service = PlaylistService(baseURL: baseURL)
         do {
