@@ -87,32 +87,66 @@ struct ContentView: View {
 
     private var quietHoursSection: some View {
         Section {
-            Toggle(isOn: $viewModel.quietHoursEnabled) {
-                Label("Mode nuit", systemImage: "moon.fill")
+            Toggle(isOn: pausePlaylistBinding) {
+                Label {
+                    Text(pauseToggleLabel)
+                } icon: {
+                    Image(systemName: "pause.circle.fill")
+                }
             }
+            .disabled(!viewModel.canPausePlaylist && !viewModel.canResumePlaylist)
 
-            if viewModel.quietHoursEnabled {
-                LabeledContent {
-                    Text("23h – 7h")
-                        .foregroundStyle(.secondary)
-                } label: {
-                    Label("Horaires", systemImage: "clock")
+            Group {
+                Toggle(isOn: $viewModel.quietHoursEnabled) {
+                    Label("Mode nuit", systemImage: "moon.fill")
                 }
 
-                NavigationLink {
-                    TimeZonePickerView(selection: $viewModel.quietHoursTimezone)
-                } label: {
+                if viewModel.quietHoursEnabled {
                     LabeledContent {
-                        Text(viewModel.quietHoursTimezone.replacingOccurrences(of: "_", with: " "))
+                        Text("23h – 7h")
                             .foregroundStyle(.secondary)
                     } label: {
-                        Label("Fuseau horaire", systemImage: "globe")
+                        Label("Horaires", systemImage: "clock")
+                    }
+
+                    NavigationLink {
+                        TimeZonePickerView(selection: $viewModel.quietHoursTimezone)
+                    } label: {
+                        LabeledContent {
+                            Text(viewModel.quietHoursTimezone.replacingOccurrences(of: "_", with: " "))
+                                .foregroundStyle(.secondary)
+                        } label: {
+                            Label("Fuseau horaire", systemImage: "globe")
+                        }
                     }
                 }
             }
+            .disabled(viewModel.isPlaylistPaused)
         } footer: {
             Text(String(localized: "Pause le défilement des images entre 23h et 7h dans le fuseau horaire sélectionné. Le Canvas reste en veille pendant cette période."))
         }
+    }
+
+    private var pausePlaylistBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel.isPlaylistPaused },
+            set: { newValue in
+                if newValue {
+                    viewModel.pausePlaylist()
+                } else {
+                    viewModel.resumePlaylist()
+                }
+            }
+        )
+    }
+
+    private var pauseToggleLabel: String {
+        if viewModel.isPausingPlaylist {
+            return viewModel.isPlaylistPaused
+                ? String(localized: "Reprise...")
+                : String(localized: "Mise en pause...")
+        }
+        return String(localized: "Mettre en pause")
     }
 
     private var batterySection: some View {
@@ -259,31 +293,16 @@ struct ContentView: View {
                 }
                 .disabled(!viewModel.canStartUpload)
 
-                playlistActionButton
+                if !viewModel.isPlaylistRunning && !viewModel.isPlaylistPaused {
+                    Button(viewModel.isStartingPlaylist ? "Démarrage..." : "Démarrer la playlist") {
+                        viewModel.startPlaylist()
+                    }
+                    .disabled(!viewModel.canStartPlaylist)
+                }
             } footer: {
                 Text("Pour lancer la playlist le canvas doit être accessible sur le réseau. Reveillez le a partir de l'application BLOOMIN8")
                     .font(.footnote)
             }
-        }
-    }
-
-    @ViewBuilder
-    private var playlistActionButton: some View {
-        if viewModel.isPlaylistRunning {
-            Button(viewModel.isPausingPlaylist ? "Mise en pause..." : "Mettre en pause", role: .destructive) {
-                viewModel.pausePlaylist()
-            }
-            .disabled(!viewModel.canPausePlaylist)
-        } else if viewModel.isPlaylistPaused {
-            Button(viewModel.isPausingPlaylist ? "Reprise..." : "Reprendre") {
-                viewModel.resumePlaylist()
-            }
-            .disabled(!viewModel.canResumePlaylist)
-        } else {
-            Button(viewModel.isStartingPlaylist ? "Démarrage..." : "Démarrer la playlist") {
-                viewModel.startPlaylist()
-            }
-            .disabled(!viewModel.canStartPlaylist)
         }
     }
 
