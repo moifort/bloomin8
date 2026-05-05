@@ -19,6 +19,14 @@ POST {{base}}/playlist/pause
 ### RESUME
 POST {{base}}/playlist/resume
 
+### UPDATE interval
+POST {{base}}/playlist/interval
+Content-Type: application/json
+
+{
+  "cronIntervalInHours": 6
+}
+
 ### GET progress
 GET {{base}}/playlist/progress
 
