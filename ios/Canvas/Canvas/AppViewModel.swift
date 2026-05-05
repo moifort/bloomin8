@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import Photos
+import WidgetKit
 
 @MainActor
 @Observable
@@ -10,6 +11,8 @@ final class AppViewModel {
     private static let batteryPercentageDefaultsKey = "canvas.battery.percentage"
     private static let lastFullChargeDateDefaultsKey = "canvas.battery.last-full-charge-date"
     private static let lastPullDateDefaultsKey = "canvas.battery.last-pull-date"
+    private static let playlistDisplayedDefaultsKey = "canvas.playlist.displayed"
+    private static let playlistTotalDefaultsKey = "canvas.playlist.total"
     private static let quietHoursEnabledDefaultsKey = "canvas.quiet-hours.enabled"
     private static let quietHoursTimezoneDefaultsKey = "canvas.quiet-hours.timezone"
     private static let sharedDefaultsSuiteName = "group.polyforms.canvas"
@@ -59,7 +62,11 @@ final class AppViewModel {
             persistLastPullDate()
         }
     }
-    private(set) var playlistProgress: PlaylistProgress?
+    private(set) var playlistProgress: PlaylistProgress? {
+        didSet {
+            persistPlaylistProgress()
+        }
+    }
     private(set) var isUpdatingInterval = false
 
     private let maxConcurrentUploads = 5
@@ -190,6 +197,8 @@ final class AppViewModel {
         if let progress, playlistIntervalTask == nil {
             cronIntervalInHours = progress.cronIntervalInHours
         }
+
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     func requestPhotoAccess() {
@@ -515,6 +524,8 @@ final class AppViewModel {
         } catch {
             errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
+
+        WidgetCenter.shared.reloadAllTimelines()
     }
 
     private func validatedHTTPURL(_ rawValue: String) -> URL? {
@@ -566,6 +577,16 @@ final class AppViewModel {
         let timestamp = lastPullDate.timeIntervalSince1970
         userDefaults.set(timestamp, forKey: Self.lastPullDateDefaultsKey)
         sharedDefaults?.set(timestamp, forKey: Self.lastPullDateDefaultsKey)
+    }
+
+    private func persistPlaylistProgress() {
+        guard let progress = playlistProgress else {
+            sharedDefaults?.removeObject(forKey: Self.playlistDisplayedDefaultsKey)
+            sharedDefaults?.removeObject(forKey: Self.playlistTotalDefaultsKey)
+            return
+        }
+        sharedDefaults?.set(progress.displayed, forKey: Self.playlistDisplayedDefaultsKey)
+        sharedDefaults?.set(progress.total, forKey: Self.playlistTotalDefaultsKey)
     }
 
     private func persistQuietHoursEnabled() {

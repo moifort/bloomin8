@@ -10,6 +10,8 @@ private enum CanvasWidgetStore {
     static let widgetBackgroundPositionKey = "canvas.widget.background.position"
     static let widgetSafeAreaTopKey = "canvas.widget.safe-area.top"
     static let lastPullDateKey = "canvas.battery.last-pull-date"
+    static let playlistDisplayedKey = "canvas.playlist.displayed"
+    static let playlistTotalKey = "canvas.playlist.total"
     static let widgetBackgroundImageFilename = "canvas-widget-background.png"
     static let defaultServerURL = "http://192.168.0.165:3000"
 }
@@ -82,16 +84,48 @@ private struct CanvasBatteryResponseEnvelope: Decodable {
     let data: Payload?
 }
 
+private struct PlaylistProgressResponseEnvelope: Decodable {
+    struct ProgressData: Decodable {
+        let displayed: Int
+        let total: Int
+    }
+
+    enum Payload: Decodable {
+        case progress(ProgressData)
+        case notFound
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            if let data = try? container.decode(ProgressData.self) {
+                self = .progress(data)
+                return
+            }
+            if let raw = try? container.decode(String.self), raw == "playlist-not-found" {
+                self = .notFound
+                return
+            }
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Unsupported playlist progress payload format."
+            )
+        }
+    }
+
+    let data: Payload?
+}
+
 private struct CanvasBatteryEntry: TimelineEntry {
     let date: Date
     let percentage: Int?
     let lastFullChargeDate: Date?
     let lastPullDate: Date?
+    let playlistDisplayed: Int?
+    let playlistTotal: Int?
 }
 
 private struct CanvasBatteryProvider: TimelineProvider {
     func placeholder(in context: Context) -> CanvasBatteryEntry {
-        CanvasBatteryEntry(date: Date(), percentage: 72, lastFullChargeDate: nil, lastPullDate: nil)
+        CanvasBatteryEntry(date: Date(), percentage: 72, lastFullChargeDate: nil, lastPullDate: nil, playlistDisplayed: 22, playlistTotal: 45)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (CanvasBatteryEntry) -> Void) {
@@ -109,37 +143,89 @@ private struct CanvasBatteryProvider: TimelineProvider {
     }
 
     private func buildEntry(displaySize: CGSize) async -> CanvasBatteryEntry {
-        let (percentage, lastChargeDate, lastPullDate) = await resolveBatteryData()
-        return CanvasBatteryEntry(date: Date(), percentage: percentage, lastFullChargeDate: lastChargeDate, lastPullDate: lastPullDate)
+        let resolved = await resolveDeviceData()
+        return CanvasBatteryEntry(
+            date: Date(),
+            percentage: resolved.percentage,
+            lastFullChargeDate: resolved.lastChargeDate,
+            lastPullDate: resolved.lastPullDate,
+            playlistDisplayed: resolved.playlistDisplayed,
+            playlistTotal: resolved.playlistTotal
+        )
     }
 
-    private func resolveBatteryData() async -> (percentage: Int?, lastChargeDate: Date?, lastPullDate: Date?) {
+    private func resolveDeviceData() async -> (
+        percentage: Int?,
+        lastChargeDate: Date?,
+        lastPullDate: Date?,
+        playlistDisplayed: Int?,
+        playlistTotal: Int?
+    ) {
         let cachedPercentage = readCachedBatteryPercentage()
         let cachedChargeDate = readCachedLastFullChargeDate()
         let cachedPullDate = readCachedLastPullDate()
+        let cachedDisplayed = readCachedPlaylistDisplayed()
+        let cachedTotal = readCachedPlaylistTotal()
 
-        guard let (fetchedPercentage, fetchedChargeDate, fetchedPullDate) = await fetchBatteryData() else {
-            return (cachedPercentage, cachedChargeDate, cachedPullDate)
+        guard let baseURL = validatedServerURL() else {
+            return (cachedPercentage, cachedChargeDate, cachedPullDate, cachedDisplayed, cachedTotal)
         }
 
-        persistBatteryPercentage(fetchedPercentage)
-        if let chargeDate = fetchedChargeDate {
-            persistLastFullChargeDate(chargeDate)
+        async let battery = fetchBatteryData(baseURL: baseURL)
+        async let playlist = fetchPlaylistProgress(baseURL: baseURL)
+
+        let batteryResult = await battery
+        let playlistResult = await playlist
+
+        let percentage = batteryResult?.percentage ?? cachedPercentage
+        let chargeDate = batteryResult?.lastChargeDate ?? cachedChargeDate
+        let pullDate = batteryResult?.lastPullDate ?? cachedPullDate
+
+        if let batteryResult {
+            persistBatteryPercentage(batteryResult.percentage)
+            if let date = batteryResult.lastChargeDate {
+                persistLastFullChargeDate(date)
+            }
+            if let date = batteryResult.lastPullDate {
+                persistLastPullDate(date)
+            }
         }
-        if let pullDate = fetchedPullDate {
-            persistLastPullDate(pullDate)
+
+        let displayed: Int?
+        let total: Int?
+        switch playlistResult {
+        case let .some(.found(d, t)):
+            displayed = d
+            total = t
+            persistPlaylistProgress(displayed: d, total: t)
+        case .some(.notFound):
+            displayed = nil
+            total = nil
+            clearPlaylistProgress()
+        case .none:
+            displayed = cachedDisplayed
+            total = cachedTotal
         }
-        return (fetchedPercentage, fetchedChargeDate ?? cachedChargeDate, fetchedPullDate ?? cachedPullDate)
+
+        return (percentage, chargeDate, pullDate, displayed, total)
     }
 
-    private func fetchBatteryData() async -> (percentage: Int, lastChargeDate: Date?, lastPullDate: Date?)? {
+    private enum PlaylistFetchResult {
+        case found(displayed: Int, total: Int)
+        case notFound
+    }
+
+    private func validatedServerURL() -> URL? {
         guard
-            let baseURL = URL(string: readServerURL()),
-            ["http", "https"].contains(baseURL.scheme?.lowercased())
+            let url = URL(string: readServerURL()),
+            ["http", "https"].contains(url.scheme?.lowercased())
         else {
             return nil
         }
+        return url
+    }
 
+    private func fetchBatteryData(baseURL: URL) async -> (percentage: Int, lastChargeDate: Date?, lastPullDate: Date?)? {
         let endpoint = baseURL
             .appendingPathComponent("canvas")
             .appendingPathComponent("battery")
@@ -178,6 +264,40 @@ private struct CanvasBatteryProvider: TimelineProvider {
             return (batteryData.percentage, chargeDate, pullDate)
         case .unavailable:
             return nil
+        }
+    }
+
+    private func fetchPlaylistProgress(baseURL: URL) async -> PlaylistFetchResult? {
+        let endpoint = baseURL
+            .appendingPathComponent("playlist")
+            .appendingPathComponent("progress")
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 12
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            return nil
+        }
+
+        guard
+            let httpResponse = response as? HTTPURLResponse,
+            (200 ..< 300).contains(httpResponse.statusCode),
+            let envelope = try? JSONDecoder().decode(PlaylistProgressResponseEnvelope.self, from: data),
+            let payload = envelope.data
+        else {
+            return nil
+        }
+
+        switch payload {
+        case let .progress(progressData):
+            return .found(displayed: progressData.displayed, total: progressData.total)
+        case .notFound:
+            return .notFound
         }
     }
 
@@ -292,6 +412,26 @@ private struct CanvasBatteryProvider: TimelineProvider {
         UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.set(timestamp, forKey: CanvasWidgetStore.lastPullDateKey)
     }
 
+    private func readCachedPlaylistDisplayed() -> Int? {
+        UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.object(forKey: CanvasWidgetStore.playlistDisplayedKey) as? Int
+    }
+
+    private func readCachedPlaylistTotal() -> Int? {
+        UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.object(forKey: CanvasWidgetStore.playlistTotalKey) as? Int
+    }
+
+    private func persistPlaylistProgress(displayed: Int, total: Int) {
+        let defaults = UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)
+        defaults?.set(displayed, forKey: CanvasWidgetStore.playlistDisplayedKey)
+        defaults?.set(total, forKey: CanvasWidgetStore.playlistTotalKey)
+    }
+
+    private func clearPlaylistProgress() {
+        let defaults = UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)
+        defaults?.removeObject(forKey: CanvasWidgetStore.playlistDisplayedKey)
+        defaults?.removeObject(forKey: CanvasWidgetStore.playlistTotalKey)
+    }
+
     private func readBackgroundPosition() -> WidgetBackgroundPosition? {
         let rawValue = UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.string(forKey: CanvasWidgetStore.widgetBackgroundPositionKey)
         return WidgetBackgroundPosition(rawValue: rawValue ?? "")
@@ -364,8 +504,9 @@ private struct CanvasBatteryWidgetView: View {
         GeometryReader { geometry in
             ZStack(alignment: .topTrailing) {
                 widgetContent(in: geometry)
-                VStack(alignment: .trailing) {
+                VStack(alignment: .trailing, spacing: 2) {
                     daysIndicator
+                    playlistProgressIndicator
                     if widgetFamily != .systemSmall {
                         Spacer()
                         lastPullIndicator
@@ -442,6 +583,24 @@ private struct CanvasBatteryWidgetView: View {
                     .font(.caption)
                     .foregroundStyle(.primary.opacity(0.7))
                     .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
+            }
+        }
+    }
+
+    // Compteur de progression dans la playlist
+    private var playlistProgressIndicator: some View {
+        Group {
+            if let total = entry.playlistTotal,
+               let displayed = entry.playlistDisplayed,
+               total > 0 {
+                HStack(spacing: 3) {
+                    Image(systemName: "photo.stack")
+                        .font(.caption2)
+                    Text("\(displayed) / \(total)", comment: "Playlist progress: displayed of total")
+                        .font(.caption)
+                }
+                .foregroundStyle(.primary.opacity(0.7))
+                .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
             }
         }
     }
@@ -540,25 +699,25 @@ struct CanvasBatteryWidget: Widget {
 #Preview("Small", as: .systemSmall) {
     CanvasBatteryWidget()
 } timeline: {
-    CanvasBatteryEntry(date: .now, percentage: 78, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -2, to: .now), lastPullDate: Calendar.current.date(byAdding: .hour, value: -2, to: .now))
-    CanvasBatteryEntry(date: .now, percentage: 38, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -5, to: .now), lastPullDate: Calendar.current.date(byAdding: .hour, value: -6, to: .now))
-    CanvasBatteryEntry(date: .now, percentage: 8, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -10, to: .now), lastPullDate: Calendar.current.date(byAdding: .day, value: -1, to: .now))
-    CanvasBatteryEntry(date: .now, percentage: nil, lastFullChargeDate: nil, lastPullDate: nil)
+    CanvasBatteryEntry(date: .now, percentage: 78, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -2, to: .now), lastPullDate: Calendar.current.date(byAdding: .hour, value: -2, to: .now), playlistDisplayed: 12, playlistTotal: 45)
+    CanvasBatteryEntry(date: .now, percentage: 38, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -5, to: .now), lastPullDate: Calendar.current.date(byAdding: .hour, value: -6, to: .now), playlistDisplayed: 28, playlistTotal: 45)
+    CanvasBatteryEntry(date: .now, percentage: 8, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -10, to: .now), lastPullDate: Calendar.current.date(byAdding: .day, value: -1, to: .now), playlistDisplayed: 44, playlistTotal: 45)
+    CanvasBatteryEntry(date: .now, percentage: nil, lastFullChargeDate: nil, lastPullDate: nil, playlistDisplayed: nil, playlistTotal: nil)
 }
 
 #Preview("Medium", as: .systemMedium) {
     CanvasBatteryWidget()
 } timeline: {
-    CanvasBatteryEntry(date: .now, percentage: 78, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -3, to: .now), lastPullDate: Calendar.current.date(byAdding: .hour, value: -3, to: .now))
-    CanvasBatteryEntry(date: .now, percentage: 38, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -7, to: .now), lastPullDate: Calendar.current.date(byAdding: .hour, value: -12, to: .now))
-    CanvasBatteryEntry(date: .now, percentage: 8, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -14, to: .now), lastPullDate: Calendar.current.date(byAdding: .day, value: -2, to: .now))
+    CanvasBatteryEntry(date: .now, percentage: 78, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -3, to: .now), lastPullDate: Calendar.current.date(byAdding: .hour, value: -3, to: .now), playlistDisplayed: 12, playlistTotal: 45)
+    CanvasBatteryEntry(date: .now, percentage: 38, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -7, to: .now), lastPullDate: Calendar.current.date(byAdding: .hour, value: -12, to: .now), playlistDisplayed: 28, playlistTotal: 45)
+    CanvasBatteryEntry(date: .now, percentage: 8, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -14, to: .now), lastPullDate: Calendar.current.date(byAdding: .day, value: -2, to: .now), playlistDisplayed: 44, playlistTotal: 45)
 }
 
 #Preview("Large", as: .systemLarge) {
     CanvasBatteryWidget()
 } timeline: {
-    CanvasBatteryEntry(date: .now, percentage: 78, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -1, to: .now), lastPullDate: Calendar.current.date(byAdding: .minute, value: -30, to: .now))
-    CanvasBatteryEntry(date: .now, percentage: 38, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -4, to: .now), lastPullDate: Calendar.current.date(byAdding: .hour, value: -5, to: .now))
+    CanvasBatteryEntry(date: .now, percentage: 78, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -1, to: .now), lastPullDate: Calendar.current.date(byAdding: .minute, value: -30, to: .now), playlistDisplayed: 22, playlistTotal: 45)
+    CanvasBatteryEntry(date: .now, percentage: 38, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -4, to: .now), lastPullDate: Calendar.current.date(byAdding: .hour, value: -5, to: .now), playlistDisplayed: 33, playlistTotal: 45)
 }
 
 
