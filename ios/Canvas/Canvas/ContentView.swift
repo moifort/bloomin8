@@ -4,6 +4,7 @@ struct ContentView: View {
     @State private var viewModel = AppViewModel()
     @Environment(\.scenePhase) private var scenePhase
     @State private var showingError = false
+    @FocusState private var intervalFieldFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -82,6 +83,7 @@ struct ContentView: View {
                         .keyboardType(.numberPad)
                         .multilineTextAlignment(.trailing)
                         .fixedSize()
+                        .focused($intervalFieldFocused)
                     Text("h")
                         .foregroundStyle(.secondary)
                 }
@@ -91,6 +93,15 @@ struct ContentView: View {
             .onChange(of: viewModel.cronIntervalInHours) { _, newValue in
                 guard (1...168).contains(newValue) else { return }
                 viewModel.updatePlaylistInterval(newValue)
+            }
+            .onChange(of: intervalFieldFocused) { _, focused in
+                guard focused else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    UIApplication.shared.sendAction(
+                        #selector(UIResponder.selectAll(_:)),
+                        to: nil, from: nil, for: nil
+                    )
+                }
             }
         }
     }
