@@ -4,7 +4,6 @@ struct ContentView: View {
     @State private var viewModel = AppViewModel()
     @Environment(\.scenePhase) private var scenePhase
     @State private var showingError = false
-    @FocusState private var intervalFieldFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -78,14 +77,29 @@ struct ContentView: View {
             }
 
             LabeledContent {
-                HStack(spacing: 2) {
-                    TextField("3", value: $viewModel.cronIntervalInHours, format: .number)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.trailing)
-                        .fixedSize()
-                        .focused($intervalFieldFocused)
-                    Text("h")
-                        .foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    Button {
+                        viewModel.cronIntervalInHours = max(1, viewModel.cronIntervalInHours - 1)
+                    } label: {
+                        Image(systemName: "minus")
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(viewModel.cronIntervalInHours <= 1)
+
+                    HStack(spacing: 2) {
+                        Text("\(viewModel.cronIntervalInHours)")
+                            .monospacedDigit()
+                        Text("h")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Button {
+                        viewModel.cronIntervalInHours = min(168, viewModel.cronIntervalInHours + 1)
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(viewModel.cronIntervalInHours >= 168)
                 }
             } label: {
                 Label("Intervalle", systemImage: "clock")
@@ -93,15 +107,6 @@ struct ContentView: View {
             .onChange(of: viewModel.cronIntervalInHours) { _, newValue in
                 guard (1...168).contains(newValue) else { return }
                 viewModel.updatePlaylistInterval(newValue)
-            }
-            .onChange(of: intervalFieldFocused) { _, focused in
-                guard focused else { return }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                    UIApplication.shared.sendAction(
-                        #selector(UIResponder.selectAll(_:)),
-                        to: nil, from: nil, for: nil
-                    )
-                }
             }
         }
     }
