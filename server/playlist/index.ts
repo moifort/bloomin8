@@ -141,6 +141,7 @@ export namespace Playlist {
       displayed: total - remaining,
       total,
       status: playlist.status,
+      cronIntervalInHours: playlist.cronIntervalInHours,
     }
   }
 

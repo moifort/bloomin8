@@ -9,6 +9,7 @@ export default defineEventHandler(async () => {
       displayed: progress.displayed,
       total: progress.total,
       status: progress.status,
+      cronIntervalInHours: progress.cronIntervalInHours,
     },
   }
 })
