@@ -185,7 +185,11 @@ final class AppViewModel {
             lastPullDate = nil
         }
 
-        playlistProgress = try? await progressResult
+        let progress = try? await progressResult
+        playlistProgress = progress
+        if let progress, playlistIntervalTask == nil {
+            cronIntervalInHours = progress.cronIntervalInHours
+        }
     }
 
     func requestPhotoAccess() {

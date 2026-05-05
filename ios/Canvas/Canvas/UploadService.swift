@@ -99,6 +99,7 @@ struct PlaylistProgress {
     let displayed: Int
     let total: Int
     let status: Status
+    let cronIntervalInHours: Int
 }
 
 struct PlaylistService {
@@ -131,6 +132,7 @@ struct PlaylistService {
                 let displayed: Int
                 let total: Int
                 let status: PlaylistProgress.Status
+                let cronIntervalInHours: Int
             }
 
             init(from decoder: Decoder) throws {
@@ -262,7 +264,8 @@ struct PlaylistService {
                 return PlaylistProgress(
                     displayed: progressData.displayed,
                     total: progressData.total,
-                    status: progressData.status
+                    status: progressData.status,
+                    cronIntervalInHours: progressData.cronIntervalInHours
                 )
             case .notFound:
                 return nil
