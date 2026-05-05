@@ -29,7 +29,7 @@ final class AppViewModel {
             persistCanvasURL()
         }
     }
-    var cronIntervalInHours: String = "3"
+    var cronIntervalInHours: Int = 3
     var quietHoursEnabled: Bool {
         didSet { persistQuietHoursEnabled() }
     }
@@ -68,6 +68,7 @@ final class AppViewModel {
     private var uploadTask: Task<Void, Never>?
     private var playlistStartTask: Task<Void, Never>?
     private var playlistPauseTask: Task<Void, Never>?
+    private var playlistIntervalTask: Task<Void, Never>?
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
@@ -250,17 +251,13 @@ final class AppViewModel {
             errorText = String(localized: "URL Canvas invalide.")
             return
         }
-        guard let parsedCronIntervalInHours = validatedPositiveInt(cronIntervalInHours) else {
-            errorText = String(localized: "Intervalle cron invalide (entier > 0 requis).")
-            return
-        }
 
         playlistStartTask?.cancel()
         playlistStartTask = Task {
             await runPlaylistStart(
                 baseURL: url,
                 canvasURL: canvasEndpoint,
-                cronIntervalInHours: parsedCronIntervalInHours
+                cronIntervalInHours: cronIntervalInHours
             )
         }
     }
@@ -290,6 +287,19 @@ final class AppViewModel {
         playlistPauseTask?.cancel()
         playlistPauseTask = Task {
             await runPlaylistResume(baseURL: url)
+        }
+    }
+
+    func updatePlaylistInterval(_ hours: Int) {
+        guard playlistProgress != nil else { return }
+        guard let url = validatedHTTPURL(serverURL) else {
+            errorText = AppError.invalidServerURL.localizedDescription
+            return
+        }
+
+        playlistIntervalTask?.cancel()
+        playlistIntervalTask = Task {
+            await runPlaylistUpdateInterval(baseURL: url, hours: hours)
         }
     }
 
@@ -482,6 +492,17 @@ final class AppViewModel {
         await refreshCanvasBattery()
     }
 
+    private func runPlaylistUpdateInterval(baseURL: URL, hours: Int) async {
+        defer { playlistIntervalTask = nil }
+
+        let service = PlaylistService(baseURL: baseURL)
+        do {
+            statusText = try await service.updateInterval(cronIntervalInHours: hours)
+        } catch {
+            errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
     private func validatedHTTPURL(_ rawValue: String) -> URL? {
         let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: trimmed), ["http", "https"].contains(url.scheme?.lowercased()) else {
@@ -489,14 +510,6 @@ final class AppViewModel {
         }
 
         return url
-    }
-
-    private func validatedPositiveInt(_ rawValue: String) -> Int? {
-        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let parsedValue = Int(trimmed), parsedValue > 0 else {
-            return nil
-        }
-        return parsedValue
     }
 
     private func persistServerURL() {

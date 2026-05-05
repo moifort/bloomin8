@@ -165,6 +165,10 @@ struct PlaylistService {
         let quietHours: QuietHoursPayload?
     }
 
+    struct UpdateIntervalPayload: Encodable {
+        let cronIntervalInHours: Int
+    }
+
     enum PlaylistError: LocalizedError {
         case invalidHTTPResponse
         case server(statusCode: Int, message: String)
@@ -333,6 +337,41 @@ struct PlaylistService {
                     : String(localized: "Reprise planifiée — le Canvas reprendra au prochain réveil (sous 24h)")
             )
             return ResumeResult(message: message, wokeUp: wokeUp)
+        }
+
+        let decodedMessage = (try? JSONDecoder().decode(ResponseEnvelope.self, from: data))?.message
+        let fallbackMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+        throw PlaylistError.server(statusCode: http.statusCode, message: decodedMessage ?? fallbackMessage)
+    }
+
+    func updateInterval(cronIntervalInHours: Int) async throws -> String {
+        let endpoint = baseURL
+            .appendingPathComponent("playlist")
+            .appendingPathComponent("interval")
+
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(
+            UpdateIntervalPayload(cronIntervalInHours: cronIntervalInHours)
+        )
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch {
+            throw PlaylistError.transport(error)
+        }
+
+        guard let http = response as? HTTPURLResponse else {
+            throw PlaylistError.invalidHTTPResponse
+        }
+
+        if (200 ..< 300).contains(http.statusCode) {
+            let envelope = try? JSONDecoder().decode(ResponseEnvelope.self, from: data)
+            return envelope?.message ?? String(localized: "Intervalle mis à jour")
         }
 
         let decodedMessage = (try? JSONDecoder().decode(ResponseEnvelope.self, from: data))?.message

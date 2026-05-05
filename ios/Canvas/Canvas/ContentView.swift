@@ -76,11 +76,16 @@ struct ContentView: View {
                 Label("BLOOMIN8", systemImage: "photo.on.rectangle.angled")
             }
 
-            LabeledContent {
-                Text("\(viewModel.cronIntervalInHours)h")
-                    .foregroundStyle(.secondary)
-            } label: {
-                Label("Intervalle", systemImage: "clock")
+            Stepper(value: $viewModel.cronIntervalInHours, in: 1...168) {
+                LabeledContent {
+                    Text("\(viewModel.cronIntervalInHours)h")
+                        .foregroundStyle(.secondary)
+                } label: {
+                    Label("Intervalle", systemImage: "clock")
+                }
+            }
+            .onChange(of: viewModel.cronIntervalInHours) { _, newValue in
+                viewModel.updatePlaylistInterval(newValue)
             }
         }
     }
