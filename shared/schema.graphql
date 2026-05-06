@@ -1,0 +1,167 @@
+"""Latest battery report received from the BLOOMIN8 device"""
+type BatteryInfo {
+  """When the device last reached 100% — null if never seen fully charged"""
+  lastFullChargeDate: DateTime
+
+  """Timestamp of the most recent pull from the device"""
+  lastPullDate: DateTime
+
+  """Battery level as integer in [0, 100]"""
+  percentage: Percentage!
+}
+
+"""ISO 8601 UTC date-time normalized without milliseconds"""
+scalar CanvasDate
+
+"""Absolute URL of the BLOOMIN8 device"""
+scalar CanvasUrl
+
+"""ISO 8601 date-time string"""
+scalar DateTime
+
+"""Cron interval in hours, integer in [1, 168]"""
+scalar Hour
+
+"""A picture stored in the playlist"""
+type Image {
+  """Server-side upload timestamp"""
+  createdAt: DateTime!
+
+  """Unique identifier (UUID v4)"""
+  id: ImageId!
+
+  """How the device should display the image"""
+  orientation: Orientation!
+
+  """Server-relative path served as a JPEG (e.g. /images/<id>_P.jpg)"""
+  url: ImageUrl!
+}
+
+"""Image unique identifier (UUID v4)"""
+scalar ImageId
+
+"""Server-relative path to an image file (must start with /)"""
+scalar ImageUrl
+
+type Mutation {
+  """Delete every uploaded image. Returns the count of deleted entries."""
+  deleteAllImages: Int!
+
+  """Pause an in-progress playlist so the device defers its next pull."""
+  pausePlaylist: PlaylistId!
+
+  """Resume a paused playlist and try to wake the device immediately."""
+  resumePlaylist: PlaylistResumePayload!
+
+  """
+  Initialize the playlist with the given canvas URL and cron interval, then wake the device.
+  """
+  startPlaylist(input: StartPlaylistInput!): PlaylistId!
+
+  """Change the cron interval of the existing playlist."""
+  updatePlaylistInterval(
+    """New interval between two image displays, in hours"""
+    cronIntervalInHours: Hour!
+  ): PlaylistId!
+}
+
+"""Image display orientation as transmitted to the BLOOMIN8 device"""
+enum Orientation {
+  """
+  Landscape — stored portrait, device rotates 90° counter-clockwise on display
+  """
+  landscape
+
+  """Portrait — stored as-is, displayed upright"""
+  portrait
+}
+
+"""Battery percentage, integer in [0, 100]"""
+scalar Percentage
+
+"""Playlist unique identifier (UUID v4)"""
+scalar PlaylistId
+
+"""
+Snapshot of how many images have been displayed during the current cycle
+"""
+type PlaylistProgress {
+  """Interval between two image displays, in hours"""
+  cronIntervalInHours: Hour!
+
+  """Number of images already shown in the current cycle"""
+  displayed: Int!
+
+  """Current playlist status"""
+  status: PlaylistStatus!
+
+  """Total number of images uploaded"""
+  total: Int!
+}
+
+"""Outcome of resuming a paused playlist"""
+type PlaylistResumePayload {
+  """Identifier of the resumed playlist"""
+  playlistId: PlaylistId!
+
+  """
+  True if the BLOOMIN8 device acknowledged the wake-up call. False means it was unreachable and will catch up at its next scheduled pull.
+  """
+  wokeUp: Boolean!
+}
+
+"""Current playback state of the playlist"""
+enum PlaylistStatus {
+  """Playlist is actively serving images"""
+  in_progress
+
+  """Playlist is paused — pulls are deferred"""
+  paused
+
+  """Playlist exists but device pulling is stopped"""
+  stop
+}
+
+type Query {
+  """
+  Latest battery report — null when no battery data has been recorded yet
+  """
+  canvasBattery: BatteryInfo
+
+  """Liveness probe — always returns "ok" when the GraphQL server is up."""
+  health: String!
+
+  """
+  Progress of the default playlist. Returns null when no playlist has been started yet.
+  """
+  playlistProgress: PlaylistProgress
+}
+
+"""
+Optional window during which the device should not pull. Currently start=23 / end=07 are hard-coded server-side; only enabled and timezone are honored.
+"""
+input QuietHoursInput {
+  """Whether the quiet window applies"""
+  enabled: Boolean!
+
+  """IANA timezone used to evaluate the quiet window (e.g. Europe/Paris)"""
+  timezone: Timezone!
+}
+
+"""Absolute URL the device should call back to"""
+scalar ServerUrl
+
+"""Parameters required to (re)start the playlist and wake the device"""
+input StartPlaylistInput {
+  """Absolute URL of the BLOOMIN8 device on the local network"""
+  canvasUrl: CanvasUrl!
+
+  """Interval between two image displays, in hours (1–168)"""
+  cronIntervalInHours: Hour!
+
+  """Optional quiet-hours configuration"""
+  quietHours: QuietHoursInput
+}
+
+"""IANA timezone identifier (e.g. Europe/Paris)"""
+scalar Timezone
