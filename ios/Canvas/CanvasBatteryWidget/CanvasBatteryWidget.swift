@@ -506,11 +506,6 @@ private struct CanvasBatteryWidgetView: View {
                 widgetContent(in: geometry)
                 VStack(alignment: .trailing, spacing: 2) {
                     daysIndicator
-                    playlistProgressIndicator
-                    if widgetFamily != .systemSmall {
-                        Spacer()
-                        lastPullIndicator
-                    }
                 }
             }
             .containerBackground(for: .widget) {
@@ -537,36 +532,38 @@ private struct CanvasBatteryWidgetView: View {
                     VStack(alignment: .leading, spacing: 0) {
                         batteryPercentageView(in: geometry)
                     }
-                    
-                    
-                    // Stack pour lastPullDate (aligné à gauche)
-                    VStack(alignment: .leading, spacing: 0) {
-                        lastPullIndicator
-                    }
+
+                    bottomRow
+                        .frame(maxWidth: .infinity)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             } else {
                 // flex-direction: row
-                HStack(alignment: .top, spacing: horizontalGap) {
-                    // Colonne principale
-                    VStack(alignment: .leading, spacing: 0) {
-                        // Stack pour le ring
+                VStack(spacing: 0) {
+                    HStack(alignment: .top, spacing: horizontalGap) {
+                        // Colonne principale
                         VStack(alignment: .leading, spacing: 0) {
-                            batteryRingView(size: ringSize(in: geometry))
+                            // Stack pour le ring
+                            VStack(alignment: .leading, spacing: 0) {
+                                batteryRingView(size: ringSize(in: geometry))
+                            }
+
+
+                            VStack(alignment: .leading, spacing: 0) {
+                                batteryPercentageView(in: geometry)
+                            }
                         }
 
-
-                        VStack(alignment: .leading, spacing: 0) {
-                            batteryPercentageView(in: geometry)
+                        if widgetFamily == .systemLarge {
+                            VStack(alignment: .leading, spacing: 0) {
+                                widgetTitleView
+                            }
+                            .frame(maxHeight: .infinity, alignment: .top)
                         }
                     }
 
-                    if widgetFamily == .systemLarge {
-                        VStack(alignment: .leading, spacing: 0) {
-                            widgetTitleView
-                        }
-                        .frame(maxHeight: .infinity, alignment: .top)
-                    }
+                    Spacer(minLength: 0)
+                    bottomRow
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
@@ -605,11 +602,20 @@ private struct CanvasBatteryWidgetView: View {
         }
     }
 
+    // Ligne du bas : temps relatif à gauche, progression playlist à droite
+    private var bottomRow: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            lastPullIndicator
+            Spacer(minLength: 4)
+            playlistProgressIndicator
+        }
+    }
+
     // Indicateur de dernier contact - position absolute (bottom-right)
     private var lastPullIndicator: some View {
         Group {
             if let lastPullDate = entry.lastPullDate {
-                Text(lastPullDate, format: .relative(presentation: .named))
+                Text(lastPullDate, format: .relative(presentation: .named, unitsStyle: .abbreviated))
                     .font(.caption2)
                     .foregroundStyle(.primary.opacity(0.5))
                     .shadow(color: .black.opacity(0.3), radius: 1, x: 0, y: 1)
