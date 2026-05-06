@@ -4,7 +4,9 @@
   "scripts": {
     "build": "nitro build",
     "dev": "nitro dev --host 0.0.0.0",
-    "preview": "node .output/server/index.mjs"
+    "preview": "node .output/server/index.mjs",
+    "generate:graphql": "bun scripts/export-graphql-schema.ts",
+    "generate": "bun run generate:graphql"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.14",
@@ -17,7 +19,11 @@
     "typescript": "5.5.4"
   },
   "dependencies": {
+    "@apollo/server": "5.5.0",
+    "@pothos/core": "4.12.0",
     "consola": "3.4.2",
+    "dataloader": "2.2.3",
+    "graphql": "16.13.2",
     "ts-pattern": "5.9.0",
     "zod": "4.3.6"
   }
