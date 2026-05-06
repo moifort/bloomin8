@@ -4,52 +4,96 @@
 @canvas = http://192.168.0.174
 @image = 303f4ccd-4667-45a2-b514-be1ffdfe7556_P.jpg
 
-### START
-POST {{base}}/playlist/start
-Content-Type: application/json
+//***********************************************************//
+//********************** REST endpoints *********************//
+//***********************************************************//
+// Only the BLOOMIN8 device protocol, raw image upload/serve, and the
+// Docker healthcheck remain on REST. Every other operation lives at /graphql.
 
-{
-  "canvasUrl": "{{canvas}}",
-  "cronIntervalInHours": 3
-}
+### Healthcheck
+GET {{base}}/health
 
-### PAUSE
-POST {{base}}/playlist/pause
-
-### RESUME
-POST {{base}}/playlist/resume
-
-### UPDATE interval
-POST {{base}}/playlist/interval
-Content-Type: application/json
-
-{
-  "cronIntervalInHours": 6
-}
-
-### GET progress
-GET {{base}}/playlist/progress
-
-### POST upload image
+### POST upload image (raw JPEG bytes — REST is the right tool here)
 POST {{base}}/upload?orientation=P
 Content-Type: application/octet-stream
 
 < ./images/IMG_3187.jpeg
 
-### GET image
+### GET image binary
 GET {{base}}/images/{{image}}
 Accept: image/jpeg
 
-### DELETE all images
-DELETE {{base}}/images
+### Device pull callback (firmware-driven, REST forced)
+GET {{base}}/eink_pull?pull_id=aa16e2e8-5d55-45be-9df4-97b27708ada2&cron_time=2026-02-11T08:11:31Z&battery=71
 
-### GET latest canvas battery
-GET {{base}}/canvas/battery
+### Device feedback
+GET {{base}}/eink_signal?pull_id=aa16e2e8-5d55-45be-9df4-97b27708ada2&success=1
 
 //***********************************************************//
-//************************** CANVAS *************************//
+//********************* GraphQL endpoint ********************//
 //***********************************************************//
-### GET settings
+// Apollo Sandbox is available in dev via GET {{base}}/graphql in a browser.
+
+### Health (GraphQL)
+POST {{base}}/graphql
+Content-Type: application/json
+
+{ "query": "{ health }" }
+
+### Canvas battery
+POST {{base}}/graphql
+Content-Type: application/json
+
+{ "query": "{ canvasBattery { percentage lastFullChargeDate lastPullDate } }" }
+
+### Playlist progress
+POST {{base}}/graphql
+Content-Type: application/json
+
+{ "query": "{ playlistProgress { displayed total status cronIntervalInHours } }" }
+
+### Start playlist
+POST {{base}}/graphql
+Content-Type: application/json
+
+{
+  "query": "mutation Start($input: StartPlaylistInput!) { startPlaylist(input: $input) }",
+  "variables": {
+    "input": {
+      "canvasUrl": "{{canvas}}",
+      "cronIntervalInHours": "3"
+    }
+  }
+}
+
+### Pause playlist
+POST {{base}}/graphql
+Content-Type: application/json
+
+{ "query": "mutation { pausePlaylist }" }
+
+### Resume playlist
+POST {{base}}/graphql
+Content-Type: application/json
+
+{ "query": "mutation { resumePlaylist { playlistId wokeUp } }" }
+
+### Update playlist interval
+POST {{base}}/graphql
+Content-Type: application/json
+
+{ "query": "mutation { updatePlaylistInterval(cronIntervalInHours: \"6\") }" }
+
+### Delete all images
+POST {{base}}/graphql
+Content-Type: application/json
+
+{ "query": "mutation { deleteAllImages }" }
+
+//***********************************************************//
+//********************* Device-side admin *******************//
+//***********************************************************//
+### GET settings (device firmware)
 GET {{canvas}}/upstream/pull_settings
 
 ### SET settings with direct call from canvas
@@ -62,6 +106,3 @@ Content-Type: application/json
   "upstream_url": "{{base}}",
   "cron_time": null
 }
-
-### GET pull callback sample with battery
-GET {{base}}/eink_pull?pull_id=aa16e2e8-5d55-45be-9df4-97b27708ada2&cron_time=2026-02-11T08:11:31Z&battery=71
