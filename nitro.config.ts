@@ -1,6 +1,11 @@
 export default defineNitroConfig({
   compatibilityDate: '2026-02-06',
   srcDir: 'server',
+  rollupConfig: {
+    treeshake: {
+      moduleSideEffects: (id) => id.includes('/graphql/') || id.includes('node_modules'),
+    },
+  },
   runtimeConfig: {
     serverUrl: 'http://192.168.0.164:3000',
   },
