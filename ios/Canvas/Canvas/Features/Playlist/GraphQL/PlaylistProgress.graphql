@@ -1,0 +1,8 @@
+query PlaylistProgress {
+  playlistProgress {
+    displayed
+    total
+    status
+    cronIntervalInHours
+  }
+}

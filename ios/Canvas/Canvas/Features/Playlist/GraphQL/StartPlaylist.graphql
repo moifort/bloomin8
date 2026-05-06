@@ -1,0 +1,3 @@
+mutation StartPlaylist($input: StartPlaylistInput!) {
+  startPlaylist(input: $input)
+}

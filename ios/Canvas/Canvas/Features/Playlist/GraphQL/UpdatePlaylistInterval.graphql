@@ -1,0 +1,3 @@
+mutation UpdatePlaylistInterval($cronIntervalInHours: Hour!) {
+  updatePlaylistInterval(cronIntervalInHours: $cronIntervalInHours)
+}

@@ -1,0 +1,7 @@
+query CanvasBattery {
+  canvasBattery {
+    percentage
+    lastFullChargeDate
+    lastPullDate
+  }
+}
