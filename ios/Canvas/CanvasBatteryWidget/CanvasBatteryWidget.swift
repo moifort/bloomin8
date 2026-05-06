@@ -1,6 +1,9 @@
+import Apollo
+import ApolloAPI
+import CanvasGraphQL
 import SwiftUI
-import WidgetKit
 import UIKit
+import WidgetKit
 
 private enum CanvasWidgetStore {
     static let appGroupSuiteName = "group.polyforms.canvas"
@@ -43,75 +46,6 @@ private enum WidgetBackgroundPosition: String {
             return 1
         }
     }
-}
-
-private struct CanvasBatteryResponseEnvelope: Decodable {
-    struct BatteryData: Decodable {
-        let percentage: Int
-        let lastFullChargeDate: String?
-        let lastPullDate: String?
-    }
-
-    enum Payload: Decodable {
-        case batteryData(BatteryData)
-        case unavailable
-
-        init(from decoder: Decoder) throws {
-            let container = try decoder.singleValueContainer()
-
-            if let batteryData = try? container.decode(BatteryData.self) {
-                self = .batteryData(batteryData)
-                return
-            }
-
-            if let rawPercentage = try? container.decode(Int.self) {
-                self = .batteryData(BatteryData(percentage: rawPercentage, lastFullChargeDate: nil, lastPullDate: nil))
-                return
-            }
-
-            if let rawStatus = try? container.decode(String.self), rawStatus == "battery-unavailable" {
-                self = .unavailable
-                return
-            }
-
-            throw DecodingError.dataCorruptedError(
-                in: container,
-                debugDescription: "Unsupported battery payload format."
-            )
-        }
-    }
-
-    let data: Payload?
-}
-
-private struct PlaylistProgressResponseEnvelope: Decodable {
-    struct ProgressData: Decodable {
-        let displayed: Int
-        let total: Int
-    }
-
-    enum Payload: Decodable {
-        case progress(ProgressData)
-        case notFound
-
-        init(from decoder: Decoder) throws {
-            let container = try decoder.singleValueContainer()
-            if let data = try? container.decode(ProgressData.self) {
-                self = .progress(data)
-                return
-            }
-            if let raw = try? container.decode(String.self), raw == "playlist-not-found" {
-                self = .notFound
-                return
-            }
-            throw DecodingError.dataCorruptedError(
-                in: container,
-                debugDescription: "Unsupported playlist progress payload format."
-            )
-        }
-    }
-
-    let data: Payload?
 }
 
 private struct CanvasBatteryEntry: TimelineEntry {
@@ -171,8 +105,9 @@ private struct CanvasBatteryProvider: TimelineProvider {
             return (cachedPercentage, cachedChargeDate, cachedPullDate, cachedDisplayed, cachedTotal)
         }
 
-        async let battery = fetchBatteryData(baseURL: baseURL)
-        async let playlist = fetchPlaylistProgress(baseURL: baseURL)
+        let client = WidgetGraphQLClient.client(for: baseURL)
+        async let battery = fetchBatteryData(client: client)
+        async let playlist = fetchPlaylistProgress(client: client)
 
         let batteryResult = await battery
         let playlistResult = await playlist
@@ -225,79 +160,32 @@ private struct CanvasBatteryProvider: TimelineProvider {
         return url
     }
 
-    private func fetchBatteryData(baseURL: URL) async -> (percentage: Int, lastChargeDate: Date?, lastPullDate: Date?)? {
-        let endpoint = baseURL
-            .appendingPathComponent("canvas")
-            .appendingPathComponent("battery")
-
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "GET"
-        request.timeoutInterval = 12
-
-        let data: Data
-        let response: URLResponse
-
+    private func fetchBatteryData(client: ApolloClient) async -> (percentage: Int, lastChargeDate: Date?, lastPullDate: Date?)? {
         do {
-            (data, response) = try await URLSession.shared.data(for: request)
-        } catch {
-            return nil
-        }
-
-        guard
-            let httpResponse = response as? HTTPURLResponse,
-            (200 ..< 300).contains(httpResponse.statusCode),
-            let envelope = try? JSONDecoder().decode(CanvasBatteryResponseEnvelope.self, from: data)
-        else {
-            return nil
-        }
-
-        guard let payload = envelope.data else {
-            return nil
-        }
-
-        switch payload {
-        case let .batteryData(batteryData):
+            let data = try await widgetFetch(client: client, query: CanvasGraphQL.CanvasBatteryWidgetQuery())
+            guard
+                let battery = data.canvasBattery,
+                let percentage = Int(battery.percentage)
+            else {
+                return nil
+            }
             let formatter = ISO8601DateFormatter()
             formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            let chargeDate = batteryData.lastFullChargeDate.flatMap { formatter.date(from: $0) }
-            let pullDate = batteryData.lastPullDate.flatMap { formatter.date(from: $0) }
-            return (batteryData.percentage, chargeDate, pullDate)
-        case .unavailable:
+            let chargeDate = battery.lastFullChargeDate.flatMap { formatter.date(from: $0) }
+            let pullDate = battery.lastPullDate.flatMap { formatter.date(from: $0) }
+            return (percentage, chargeDate, pullDate)
+        } catch {
             return nil
         }
     }
 
-    private func fetchPlaylistProgress(baseURL: URL) async -> PlaylistFetchResult? {
-        let endpoint = baseURL
-            .appendingPathComponent("playlist")
-            .appendingPathComponent("progress")
-
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "GET"
-        request.timeoutInterval = 12
-
-        let data: Data
-        let response: URLResponse
+    private func fetchPlaylistProgress(client: ApolloClient) async -> PlaylistFetchResult? {
         do {
-            (data, response) = try await URLSession.shared.data(for: request)
+            let data = try await widgetFetch(client: client, query: CanvasGraphQL.PlaylistProgressQuery())
+            guard let progress = data.playlistProgress else { return .notFound }
+            return .found(displayed: progress.displayed, total: progress.total)
         } catch {
             return nil
-        }
-
-        guard
-            let httpResponse = response as? HTTPURLResponse,
-            (200 ..< 300).contains(httpResponse.statusCode),
-            let envelope = try? JSONDecoder().decode(PlaylistProgressResponseEnvelope.self, from: data),
-            let payload = envelope.data
-        else {
-            return nil
-        }
-
-        switch payload {
-        case let .progress(progressData):
-            return .found(displayed: progressData.displayed, total: progressData.total)
-        case .notFound:
-            return .notFound
         }
     }
 
@@ -328,8 +216,6 @@ private struct CanvasBatteryProvider: TimelineProvider {
             return nil
         }
 
-        // Calculate screen size from the screenshot dimensions and scale
-        // The screenshot is a full-screen capture, so we can derive the logical size
         let scale = screenshot.scale
         let screenSize = CGSize(
             width: CGFloat(sourceCGImage.width) / scale,
@@ -343,7 +229,6 @@ private struct CanvasBatteryProvider: TimelineProvider {
         let pixelsPerPointX = CGFloat(sourceCGImage.width) / screenSize.width
         let pixelsPerPointY = CGFloat(sourceCGImage.height) / screenSize.height
 
-        // Fake transparency uses a Home Screen screenshot and crops the slot where the widget is placed.
         let horizontalInset: CGFloat = 25
         let topInset: CGFloat = 30
         let horizontalSpacing: CGFloat = 38.2
@@ -458,6 +343,48 @@ private struct CanvasBatteryProvider: TimelineProvider {
     }
 }
 
+// Local Apollo client + async fetch helpers, scoped to the widget extension.
+// Duplicates a tiny piece of GraphQLClient.swift to keep the widget binary
+// self-contained (it cannot import sibling Canvas-target files).
+private enum WidgetGraphQLClient {
+    static func client(for baseURL: URL) -> ApolloClient {
+        let url = baseURL.appendingPathComponent("graphql")
+        let store = ApolloStore()
+        let provider = DefaultInterceptorProvider(store: store)
+        let transport = RequestChainNetworkTransport(
+            interceptorProvider: provider,
+            endpointURL: url
+        )
+        return ApolloClient(networkTransport: transport, store: store)
+    }
+}
+
+private enum WidgetGraphQLError: Error {
+    case server
+    case empty
+}
+
+private func widgetFetch<Q: GraphQLQuery>(client: ApolloClient, query: Q) async throws -> Q.Data {
+    try await withCheckedThrowingContinuation { continuation in
+        client.fetch(query: query, cachePolicy: .fetchIgnoringCacheCompletely) { result in
+            switch result {
+            case let .success(graphQLResult):
+                if let _ = graphQLResult.errors?.first {
+                    continuation.resume(throwing: WidgetGraphQLError.server)
+                    return
+                }
+                if let data = graphQLResult.data {
+                    continuation.resume(returning: data)
+                } else {
+                    continuation.resume(throwing: WidgetGraphQLError.empty)
+                }
+            case let .failure(error):
+                continuation.resume(throwing: error)
+            }
+        }
+    }
+}
+
 private struct CanvasBatteryWidgetView: View {
     let entry: CanvasBatteryProvider.Entry
     @Environment(\.widgetRenderingMode) var renderingMode
@@ -477,7 +404,7 @@ private struct CanvasBatteryWidgetView: View {
     }
 
     private func ringStrokeWidth(for size: CGFloat) -> CGFloat {
-        return size * 0.125  // ~12.5% de la taille du ring
+        return size * 0.125
     }
 
     private var batteryProgress: Double {
@@ -514,21 +441,17 @@ private struct CanvasBatteryWidgetView: View {
         }
     }
 
-    // Equivalent de "display: flex; flex-direction: column/row"
     @ViewBuilder
     private func widgetContent(in geometry: GeometryProxy) -> some View {
         let horizontalGap = geometry.size.width * 0.03
 
         Group {
             if widgetFamily == .systemSmall {
-                // flex-direction: column avec distribution verticale
                 VStack(alignment: .leading, spacing: 0) {
-                    // Stack pour le ring
                     VStack(alignment: .leading, spacing: 0) {
                         batteryRingView(size: ringSize(in: geometry))
                     }
 
-                    // Stack pour le pourcentage
                     VStack(alignment: .leading, spacing: 0) {
                         batteryPercentageView(in: geometry)
                     }
@@ -538,16 +461,12 @@ private struct CanvasBatteryWidgetView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             } else {
-                // flex-direction: row
                 VStack(spacing: 0) {
                     HStack(alignment: .top, spacing: horizontalGap) {
-                        // Colonne principale
                         VStack(alignment: .leading, spacing: 0) {
-                            // Stack pour le ring
                             VStack(alignment: .leading, spacing: 0) {
                                 batteryRingView(size: ringSize(in: geometry))
                             }
-
 
                             VStack(alignment: .leading, spacing: 0) {
                                 batteryPercentageView(in: geometry)
@@ -570,7 +489,6 @@ private struct CanvasBatteryWidgetView: View {
         }
     }
 
-    // Indicateur de jours - position absolute (top-right)
     private var daysIndicator: some View {
         Group {
             if let lastChargeDate = entry.lastFullChargeDate {
@@ -584,7 +502,6 @@ private struct CanvasBatteryWidgetView: View {
         }
     }
 
-    // Compteur de progression dans la playlist
     private var playlistProgressIndicator: some View {
         Group {
             if let total = entry.playlistTotal,
@@ -602,7 +519,6 @@ private struct CanvasBatteryWidgetView: View {
         }
     }
 
-    // Ligne du bas : temps relatif à gauche, progression playlist à droite
     private var bottomRow: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             lastPullIndicator
@@ -611,7 +527,6 @@ private struct CanvasBatteryWidgetView: View {
         }
     }
 
-    // Indicateur de dernier contact - position absolute (bottom-right)
     private var lastPullIndicator: some View {
         Group {
             if let lastPullDate = entry.lastPullDate {
@@ -623,16 +538,13 @@ private struct CanvasBatteryWidgetView: View {
         }
     }
 
-    // Composant: Ring de batterie
     private func batteryRingView(size: CGFloat) -> some View {
         let strokeWidth = ringStrokeWidth(for: size)
 
         return ZStack {
-            // Background circle
             Circle()
                 .stroke(Color.primary.opacity(0.25), lineWidth: strokeWidth)
 
-            // Progress circle
             Circle()
                 .trim(from: 0, to: batteryProgress)
                 .stroke(
@@ -642,7 +554,6 @@ private struct CanvasBatteryWidgetView: View {
                 .rotationEffect(.degrees(-90))
                 .widgetAccentable()
 
-            // Battery icon
             Image(systemName: "photo.on.rectangle.angled")
                 .font(.system(size: size * 0.35, weight: .regular))
                 .foregroundStyle(Color.primary)
@@ -651,11 +562,10 @@ private struct CanvasBatteryWidgetView: View {
         .frame(width: size, height: size)
     }
 
-    // Composant: Texte du pourcentage
     private func batteryPercentageView(in geometry: GeometryProxy) -> some View {
         let fontSize: CGFloat
         if widgetFamily == .systemSmall {
-            fontSize = geometry.size.height * 0.30  // Réduit pour le widget small
+            fontSize = geometry.size.height * 0.30
         } else {
             fontSize = geometry.size.height * 0.40
         }
@@ -675,7 +585,6 @@ private struct CanvasBatteryWidgetView: View {
         }
     }
 
-    // Composant: Titre du widget
     private var widgetTitleView: some View {
         Text("Canvas Battery")
             .font(.headline)
@@ -683,8 +592,6 @@ private struct CanvasBatteryWidgetView: View {
             .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
             .widgetAccentable()
     }
-
-
 }
 
 @main
@@ -725,5 +632,3 @@ struct CanvasBatteryWidget: Widget {
     CanvasBatteryEntry(date: .now, percentage: 78, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -1, to: .now), lastPullDate: Calendar.current.date(byAdding: .minute, value: -30, to: .now), playlistDisplayed: 22, playlistTotal: 45)
     CanvasBatteryEntry(date: .now, percentage: 38, lastFullChargeDate: Calendar.current.date(byAdding: .day, value: -4, to: .now), lastPullDate: Calendar.current.date(byAdding: .hour, value: -5, to: .now), playlistDisplayed: 33, playlistTotal: 45)
 }
-
-
