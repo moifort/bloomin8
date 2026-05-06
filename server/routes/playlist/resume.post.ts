@@ -1,9 +1,9 @@
-import { config } from '~/config/index'
-import { Playlist } from '~/playlist/index'
+import { config } from '~/domain/config'
+import { PlaylistCommand } from '~/domain/playlist/command'
 
 export default defineEventHandler(async () => {
   const { serverUrl } = config()
-  const result = await Playlist.resume(serverUrl)
+  const result = await PlaylistCommand.resume(serverUrl)
   if (result === 'playlist-not-found')
     throw createError({ statusCode: 404, statusMessage: 'Playlist not found' })
   if (result === 'not-paused')

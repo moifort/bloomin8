@@ -1,6 +1,6 @@
-import { Images } from '~/images/index'
+import { ImageCommand } from '~/domain/image/command'
 
 export default defineEventHandler(async () => {
-  await Images.deleteAll()
-  return { status: 200, message: `All images deleted` }
+  await ImageCommand.deleteAll()
+  return { status: 200, message: 'All images deleted' }
 })

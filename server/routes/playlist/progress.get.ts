@@ -1,8 +1,8 @@
-import { Playlist } from '~/playlist/index'
+import { buildPlaylistProgress } from '~/domain/playlist/read-model'
 
 export default defineEventHandler(async () => {
-  const progress = await Playlist.getProgress()
-  if (progress === 'playlist-not-found') return { status: 200, data: 'playlist-not-found' }
+  const progress = await buildPlaylistProgress()
+  if (!progress) return { status: 200, data: 'playlist-not-found' }
   return {
     status: 200,
     data: {

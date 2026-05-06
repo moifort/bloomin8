@@ -1,14 +1,15 @@
-import { Canvas } from '~/canvas/index'
-import { config } from '~/config/index'
-import { Playlist } from '~/playlist/index'
+import { CanvasCommand } from '~/domain/canvas/command'
+import { config } from '~/domain/config'
+import { PlaylistCommand } from '~/domain/playlist/command'
 
 export default defineEventHandler(async () => {
   const { serverUrl } = config()
-  const nextImage = await Playlist.nextImage()
-  if (nextImage === 'playlist-not-found') return Canvas.stopPulling()
-  if (nextImage === 'playlist-stopped') return Canvas.stopPulling()
-  if (nextImage === 'playlist-empty') return Canvas.stopPulling()
-  if (nextImage === 'playlist-paused') return Canvas.deferPull(24)
-  if (nextImage === 'image-not-found') return Canvas.imageNotFound()
-  return Canvas.getNextImage(serverUrl, nextImage.nextImage.url, nextImage.displayedAt)
+  const result = await PlaylistCommand.nextImage()
+  if (result === 'playlist-not-found') return CanvasCommand.stopPullingResponse()
+  if (result === 'playlist-stopped') return CanvasCommand.stopPullingResponse()
+  if (result === 'playlist-empty') return CanvasCommand.stopPullingResponse()
+  if (result === 'playlist-paused') return CanvasCommand.deferPullResponse(24)
+  if (result === 'image-not-found')
+    return CanvasCommand.imageNotFoundResponse(new Date(Date.now() + 24 * 60 * 60 * 1000))
+  return CanvasCommand.showImageResponse(serverUrl, result.nextImage.url, result.displayedAt)
 })

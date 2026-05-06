@@ -1,6 +1,8 @@
-import { config } from '~/config/index'
-import { Playlist } from '~/playlist/index'
-import { CanvasUrl, Hour, QuietHourEnd, QuietHourStart, Timezone } from '~/playlist/primitives'
+import { config } from '~/domain/config'
+import { CanvasUrl } from '~/domain/config/primitives'
+import { PlaylistCommand } from '~/domain/playlist/command'
+import { QuietHourEnd, QuietHourStart, Timezone } from '~/domain/playlist/primitives'
+import { Hour } from '~/domain/shared/primitives'
 
 export default defineEventHandler(async (event) => {
   const { serverUrl } = config()
@@ -15,7 +17,7 @@ export default defineEventHandler(async (event) => {
       }
     : undefined
 
-  const playlistId = await Playlist.start(
+  const playlistId = await PlaylistCommand.start(
     serverUrl,
     CanvasUrl(canvasUrl),
     Hour(cronIntervalInHours),
