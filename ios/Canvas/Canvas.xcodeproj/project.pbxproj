@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AB200001000000000000000D /* Apollo in Frameworks */ = {isa = PBXBuildFile; productRef = AB200001000000000000000B /* Apollo */; };
+		AB200001000000000000000E /* Apollo in Frameworks */ = {isa = PBXBuildFile; productRef = AB200001000000000000000C /* Apollo */; };
+		AB200001000000000000001D /* CanvasGraphQL in Frameworks */ = {isa = PBXBuildFile; productRef = AB200001000000000000001B /* CanvasGraphQL */; };
+		AB200001000000000000001E /* CanvasGraphQL in Frameworks */ = {isa = PBXBuildFile; productRef = AB200001000000000000001C /* CanvasGraphQL */; };
 		BF02AA000000000000000003 /* CanvasBatteryWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = BF02AA000000000000000001 /* CanvasBatteryWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -57,6 +61,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AB200001000000000000000D /* Apollo in Frameworks */,
+				AB200001000000000000001D /* CanvasGraphQL in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -64,6 +70,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AB200001000000000000000E /* Apollo in Frameworks */,
+				AB200001000000000000001E /* CanvasGraphQL in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -110,6 +118,8 @@
 			);
 			name = Canvas;
 			packageProductDependencies = (
+				AB200001000000000000000B /* Apollo */,
+				AB200001000000000000001B /* CanvasGraphQL */,
 			);
 			productName = Canvas;
 			productReference = BF01EF402F36C1F800FC17DD /* Canvas.app */;
@@ -132,6 +142,8 @@
 			);
 			name = CanvasBatteryWidget;
 			packageProductDependencies = (
+				AB200001000000000000000C /* Apollo */,
+				AB200001000000000000001C /* CanvasGraphQL */,
 			);
 			productName = CanvasBatteryWidget;
 			productReference = BF02AA000000000000000001 /* CanvasBatteryWidget.appex */;
@@ -165,6 +177,10 @@
 			);
 			mainGroup = BF01EF372F36C1F800FC17DD;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AB200001000000000000000A /* XCRemoteSwiftPackageReference "apollo-ios" */,
+				AB200001000000000000001A /* XCLocalSwiftPackageReference "CanvasGraphQL" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = BF01EF412F36C1F800FC17DD /* Products */;
 			projectDirPath = "";
@@ -519,6 +535,45 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		AB200001000000000000001A /* XCLocalSwiftPackageReference "CanvasGraphQL" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = CanvasGraphQL;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		AB200001000000000000000A /* XCRemoteSwiftPackageReference "apollo-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apollographql/apollo-ios";
+			requirement = {
+				kind = upToNextMinorVersion;
+				minimumVersion = 1.18.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AB200001000000000000000B /* Apollo */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AB200001000000000000000A /* XCRemoteSwiftPackageReference "apollo-ios" */;
+			productName = Apollo;
+		};
+		AB200001000000000000000C /* Apollo */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AB200001000000000000000A /* XCRemoteSwiftPackageReference "apollo-ios" */;
+			productName = Apollo;
+		};
+		AB200001000000000000001B /* CanvasGraphQL */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CanvasGraphQL;
+		};
+		AB200001000000000000001C /* CanvasGraphQL */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CanvasGraphQL;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = BF01EF382F36C1F800FC17DD /* Project object */;
 }

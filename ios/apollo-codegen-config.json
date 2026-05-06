@@ -1,0 +1,24 @@
+{
+  "schemaNamespace": "CanvasGraphQL",
+  "input": {
+    "schemaSearchPaths": ["../shared/schema.graphql"],
+    "operationSearchPaths": [
+      "Canvas/Canvas/Features/**/*.graphql",
+      "Canvas/CanvasBatteryWidget/**/*.graphql"
+    ]
+  },
+  "output": {
+    "schemaTypes": {
+      "path": "Canvas/CanvasGraphQL",
+      "moduleType": {
+        "swiftPackageManager": {}
+      }
+    },
+    "operations": {
+      "inSchemaModule": {}
+    },
+    "testMocks": {
+      "none": {}
+    }
+  }
+}
