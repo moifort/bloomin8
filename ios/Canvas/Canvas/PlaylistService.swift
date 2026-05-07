@@ -4,7 +4,7 @@ import Foundation
 struct PlaylistProgress {
     enum Status: String {
         case stop
-        case inProgress = "in-progress"
+        case inProgress = "in_progress"
         case paused
     }
 
