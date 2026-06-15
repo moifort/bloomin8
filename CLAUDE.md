@@ -74,8 +74,9 @@ server/
 ├── middleware/canvas-battery.ts              # Captures ?battery=X from /eink_pull
 ├── plugins/
 │   ├── 00-startup.ts | 01-logger.ts          # Bootstrap + logging
-│   └── 02-graphql.ts                         # ApolloServer instantiation + setApollo()
-├── utils/apollo.ts                           # useApollo() singleton
+│   ├── 02-graphql.ts                         # ApolloServer instantiation + setApollo()
+│   └── 03-hap-bridge.ts                      # Publishes the HomeKit accessory (Node-only runtime)
+├── utils/apollo.ts | hap.ts                  # useApollo() / useHapBridge() singletons
 └── system/logger.ts                          # createLogger(tag) wrapper
 ```
 
@@ -93,16 +94,44 @@ server/
 - **SDL export**: committed to `shared/schema.graphql`. Regenerate via `bun run generate:graphql`. Excluded from biome formatting (Pothos owns its canonical formatting).
 - **Tree-shaking**: `nitro.config.ts` whitelists `/graphql/` paths in `rollupConfig.treeshake.moduleSideEffects` — without it Rollup elides the side-effect imports of query/mutation files, leaving Apollo with an empty schema.
 
+### HomeKit (Apple Home) Bridge
+
+The backend doubles as a **HAP accessory** so the Canvas shows up in Apple Home (and Siri). The
+device itself is pull-based and never speaks HAP — the server advertises on its behalf over mDNS.
+
+- **Library**: `hap-nodejs`. A single `Accessory` (not a Bridge — mono-device) is built in
+  `server/domain/canvas/infrastructure/homekit/accessory.ts` and published by the
+  `03-hap-bridge.ts` plugin. The accessory is stashed in the `useHapBridge()` singleton
+  (`utils/hap.ts`) for future proactive characteristic pushes.
+- **Services**: a **Switch** (`On` ⇄ playlist running) plus a read-only **Battery**
+  (BatteryLevel / StatusLowBattery ≤ 20% / static NOT_CHARGING). Getters call the public
+  `PlaylistQuery` / `CanvasQuery` namespaces on demand — no duplicated state. The switch maps
+  `On`→resume (or start from the last persisted config if stopped), `Off`→pause; command
+  rejections are logged, never surfaced as HAP errors (the `On` getter re-syncs the real state).
+- **⚠️ Node-only**: hap-nodejs asserts `crypto` supports `chacha20-poly1305`, which **Bun does
+  not** expose via `createCipheriv`. The Nitro server (`nitro` bin → `#!/usr/bin/env node`),
+  `build` and `preview` all run on **Node**, so this is fine — but never import hap-nodejs from a
+  path reachable by `bun test` or the GraphQL schema. `utils/hap.ts` uses a **type-only** import
+  precisely to stay Bun-safe.
+- **Pairing**: PIN/username/port live in `runtimeConfig.homekit` (`NITRO_HOMEKIT_*`). The
+  `username` **must be a valid hex MAC** (`CA:11:A5:00:00:01`). On boot the plugin logs the PIN
+  and a `X-HM://…` setup URI; hap-nodejs also prints a pairing QR. Pairing state persists via
+  node-persist under **`./data/hap`** (created lazily on first pair) — delete it to reset pairing,
+  then re-add the accessory in Home.
+
 ### Storage Buckets (unchanged)
 
 - `images`: `./data/images` — `<id>_P.jpg` / `<id>_L.jpg`
 - `playlist`: `./data/playlist` — playlist state (single hardcoded `DEFAULT_PLAYLIST_ID`)
 - `canvas`: `./data/canvas` — last battery report (`battery` key)
+- `hap`: `./data/hap` — HomeKit pairing state (node-persist, not Nitro storage)
 
 ### Configuration
 
 `nitro.config.ts` runtime config:
 - `NITRO_SERVER_URL`: Public URL the device should call back (default: `http://192.168.0.164:3000`)
+- `NITRO_HOMEKIT_PINCODE` / `_USERNAME` / `_PORT`: HomeKit pairing PIN (`031-45-154`), hex-MAC
+  username (`CA:11:A5:00:00:01`), and HAP port (`47129`).
 
 ### BLOOMIN8 Device Protocol (REST, unchanged)
 
