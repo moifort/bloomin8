@@ -2,7 +2,6 @@ import Apollo
 import ApolloAPI
 import CanvasGraphQL
 import SwiftUI
-import UIKit
 import WidgetKit
 
 private enum CanvasWidgetStore {
@@ -10,42 +9,10 @@ private enum CanvasWidgetStore {
     static let serverURLKey = "canvas.server.url"
     static let batteryPercentageKey = "canvas.battery.percentage"
     static let lastFullChargeDateKey = "canvas.battery.last-full-charge-date"
-    static let widgetBackgroundPositionKey = "canvas.widget.background.position"
-    static let widgetSafeAreaTopKey = "canvas.widget.safe-area.top"
     static let lastPullDateKey = "canvas.battery.last-pull-date"
     static let playlistDisplayedKey = "canvas.playlist.displayed"
     static let playlistTotalKey = "canvas.playlist.total"
-    static let widgetBackgroundImageFilename = "canvas-widget-background.png"
     static let defaultServerURL = "http://192.168.0.165:3000"
-}
-
-private enum WidgetBackgroundPosition: String {
-    case topLeft = "top-left"
-    case topRight = "top-right"
-    case middleLeft = "middle-left"
-    case middleRight = "middle-right"
-    case bottomLeft = "bottom-left"
-    case bottomRight = "bottom-right"
-
-    var rowIndex: Int {
-        switch self {
-        case .topLeft, .topRight:
-            return 0
-        case .middleLeft, .middleRight:
-            return 1
-        case .bottomLeft, .bottomRight:
-            return 2
-        }
-    }
-
-    var columnIndex: Int {
-        switch self {
-        case .topLeft, .middleLeft, .bottomLeft:
-            return 0
-        case .topRight, .middleRight, .bottomRight:
-            return 1
-        }
-    }
 }
 
 private struct CanvasBatteryEntry: TimelineEntry {
@@ -64,19 +31,19 @@ private struct CanvasBatteryProvider: TimelineProvider {
 
     func getSnapshot(in context: Context, completion: @escaping (CanvasBatteryEntry) -> Void) {
         Task {
-            completion(await buildEntry(displaySize: context.displaySize))
+            completion(await buildEntry())
         }
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<CanvasBatteryEntry>) -> Void) {
         Task {
-            let entry = await buildEntry(displaySize: context.displaySize)
+            let entry = await buildEntry()
             let refreshDate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date().addingTimeInterval(900)
             completion(Timeline(entries: [entry], policy: .after(refreshDate)))
         }
     }
 
-    private func buildEntry(displaySize: CGSize) async -> CanvasBatteryEntry {
+    private func buildEntry() async -> CanvasBatteryEntry {
         let resolved = await resolveDeviceData()
         return CanvasBatteryEntry(
             date: Date(),
@@ -189,74 +156,6 @@ private struct CanvasBatteryProvider: TimelineProvider {
         }
     }
 
-    private func resolveBackgroundImage(displaySize: CGSize) -> UIImage? {
-        guard
-            let screenshot = readBackgroundScreenshot(),
-            let position = readBackgroundPosition()
-        else {
-            return nil
-        }
-
-        let safeAreaTop = readSafeAreaTopInset()
-        return cropBackground(
-            screenshot: screenshot,
-            widgetSize: displaySize,
-            safeAreaTopInset: safeAreaTop,
-            position: position
-        )
-    }
-
-    private func cropBackground(
-        screenshot: UIImage,
-        widgetSize: CGSize,
-        safeAreaTopInset: CGFloat,
-        position: WidgetBackgroundPosition
-    ) -> UIImage? {
-        guard let sourceCGImage = screenshot.cgImage else {
-            return nil
-        }
-
-        let scale = screenshot.scale
-        let screenSize = CGSize(
-            width: CGFloat(sourceCGImage.width) / scale,
-            height: CGFloat(sourceCGImage.height) / scale
-        )
-
-        guard screenSize.width > 0, screenSize.height > 0 else {
-            return nil
-        }
-
-        let pixelsPerPointX = CGFloat(sourceCGImage.width) / screenSize.width
-        let pixelsPerPointY = CGFloat(sourceCGImage.height) / screenSize.height
-
-        let horizontalInset: CGFloat = 25
-        let topInset: CGFloat = 30
-        let horizontalSpacing: CGFloat = 38.2
-        let verticalSpacing: CGFloat = 23
-
-        let originX = horizontalInset + CGFloat(position.columnIndex) * (widgetSize.width + horizontalSpacing)
-        let originY = safeAreaTopInset + topInset + CGFloat(position.rowIndex) * (widgetSize.height + verticalSpacing)
-
-        let cropRect = CGRect(
-            x: originX * pixelsPerPointX,
-            y: originY * pixelsPerPointY,
-            width: widgetSize.width * pixelsPerPointX,
-            height: widgetSize.height * pixelsPerPointY
-        ).integral
-
-        let imageBounds = CGRect(x: 0, y: 0, width: sourceCGImage.width, height: sourceCGImage.height)
-        let boundedCropRect = cropRect.intersection(imageBounds)
-        guard boundedCropRect.width > 1, boundedCropRect.height > 1 else {
-            return nil
-        }
-
-        guard let croppedImage = sourceCGImage.cropping(to: boundedCropRect) else {
-            return nil
-        }
-
-        return UIImage(cgImage: croppedImage, scale: screenshot.scale, orientation: .up)
-    }
-
     private func readServerURL() -> String {
         if let sharedServerURL = UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.string(forKey: CanvasWidgetStore.serverURLKey) {
             return sharedServerURL
@@ -317,30 +216,6 @@ private struct CanvasBatteryProvider: TimelineProvider {
         defaults?.removeObject(forKey: CanvasWidgetStore.playlistTotalKey)
     }
 
-    private func readBackgroundPosition() -> WidgetBackgroundPosition? {
-        let rawValue = UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.string(forKey: CanvasWidgetStore.widgetBackgroundPositionKey)
-        return WidgetBackgroundPosition(rawValue: rawValue ?? "")
-    }
-
-    private func readSafeAreaTopInset() -> CGFloat {
-        let rawValue = UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.double(forKey: CanvasWidgetStore.widgetSafeAreaTopKey) ?? 0
-        return CGFloat(rawValue)
-    }
-
-    private func readBackgroundScreenshot() -> UIImage? {
-        guard
-            let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: CanvasWidgetStore.appGroupSuiteName)
-        else {
-            return nil
-        }
-
-        let screenshotURL = containerURL.appendingPathComponent(CanvasWidgetStore.widgetBackgroundImageFilename)
-        guard let imageData = try? Data(contentsOf: screenshotURL) else {
-            return nil
-        }
-
-        return UIImage(data: imageData)
-    }
 }
 
 // Local Apollo client + async fetch helpers, scoped to the widget extension.

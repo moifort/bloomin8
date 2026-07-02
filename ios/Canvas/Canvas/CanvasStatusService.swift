@@ -14,10 +14,6 @@ struct CanvasStatusService {
         self.baseURL = baseURL
     }
 
-    func getBatteryReport() async throws -> Int? {
-        try await getBatteryData()?.percentage
-    }
-
     func getBatteryData() async throws -> BatteryData? {
         let result = try await GraphQLClient.client(for: baseURL).fetchAsync(CanvasGraphQL.CanvasBatteryQuery())
         guard let battery = result.canvasBattery else { return nil }

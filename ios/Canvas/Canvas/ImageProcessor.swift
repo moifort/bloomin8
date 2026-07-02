@@ -114,12 +114,12 @@ enum ImageProcessor {
         }
         
         // Convertir en coordonnées de pixel
-        let scale = cgImage.width / Int(sourceSize.width)
+        let scale = CGFloat(cgImage.width) / sourceSize.width
         let pixelCropRect = CGRect(
-            x: cropX * CGFloat(scale),
+            x: cropX * scale,
             y: 0,
-            width: croppedWidth * CGFloat(scale),
-            height: sourceSize.height * CGFloat(scale)
+            width: croppedWidth * scale,
+            height: sourceSize.height * scale
         ).integral
         
         guard let croppedCGImage = cgImage.cropping(to: pixelCropRect) else {

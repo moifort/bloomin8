@@ -12,6 +12,7 @@
       }
     },
     "%@h" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -316,6 +317,9 @@
         }
       }
     },
+    "h" : {
+
+    },
     "Horaires" : {
       "localizations" : {
         "en" : {
@@ -325,12 +329,6 @@
           }
         }
       }
-    },
-    "http://192.168.0.165:3000" : {
-
-    },
-    "http://192.168.0.174" : {
-
     },
     "Impossible de convertir l'image en JPEG 1200×1600." : {
       "localizations" : {
@@ -392,12 +390,35 @@
         }
       }
     },
+    "Le nouvel intervalle sera appliqué au prochain réveil du Canvas." : {
+
+    },
     "Lecture de l'album..." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reading album..."
+          }
+        }
+      }
+    },
+    "Mettre en pause" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause"
+          }
+        }
+      }
+    },
+    "Mise en pause..." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pausing..."
           }
         }
       }
@@ -411,6 +432,9 @@
           }
         }
       }
+    },
+    "Modifier dans Réglages" : {
+
     },
     "OK" : {
       "localizations" : {
@@ -445,12 +469,42 @@
     "Playlist" : {
 
     },
+    "Playlist (en pause)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playlist (paused)"
+          }
+        }
+      }
+    },
+    "Playlist en pause" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playlist paused"
+          }
+        }
+      }
+    },
     "Playlist lancée." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Playlist started."
+          }
+        }
+      }
+    },
+    "Playlist reprise" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playlist resumed"
           }
         }
       }
@@ -476,6 +530,7 @@
       }
     },
     "Réponse batterie invalide." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -484,6 +539,9 @@
           }
         }
       }
+    },
+    "Réponse GraphQL invalide." : {
+
     },
     "Réponse HTTP invalide." : {
       "localizations" : {
@@ -501,6 +559,37 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Invalid upload response."
+          }
+        }
+      }
+    },
+    "Reprendre" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resume"
+          }
+        }
+      }
+    },
+    "Reprise planifiée — le Canvas reprendra au prochain réveil (sous 24h)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resume scheduled — the Canvas will restart at its next wake-up (within 24h)"
+          }
+        }
+      }
+    },
+    "Reprise..." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resuming..."
           }
         }
       }
@@ -534,6 +623,9 @@
           }
         }
       }
+    },
+    "Serveur: %@" : {
+
     },
     "Suppression des photos serveur..." : {
       "localizations" : {
@@ -621,86 +713,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Invalid server URL."
-          }
-        }
-      }
-    },
-    "Mettre en pause" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pause"
-          }
-        }
-      }
-    },
-    "Mise en pause..." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pausing..."
-          }
-        }
-      }
-    },
-    "Playlist (en pause)" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Playlist (paused)"
-          }
-        }
-      }
-    },
-    "Playlist en pause" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Playlist paused"
-          }
-        }
-      }
-    },
-    "Playlist reprise" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Playlist resumed"
-          }
-        }
-      }
-    },
-    "Reprendre" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Resume"
-          }
-        }
-      }
-    },
-    "Reprise..." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Resuming..."
-          }
-        }
-      }
-    },
-    "Reprise planifiée — le Canvas reprendra au prochain réveil (sous 24h)" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Resume scheduled — the Canvas will restart at its next wake-up (within 24h)"
           }
         }
       }

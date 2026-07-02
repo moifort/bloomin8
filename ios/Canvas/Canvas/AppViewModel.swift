@@ -21,10 +21,21 @@ final class AppViewModel {
     private(set) var canvasURL: String
     var cronIntervalInHours: Int = 3
     var quietHoursEnabled: Bool {
-        didSet { persistQuietHoursEnabled() }
+        didSet {
+            persistQuietHoursEnabled()
+            pushQuietHours()
+        }
     }
     var quietHoursTimezone: String {
-        didSet { persistQuietHoursTimezone() }
+        didSet {
+            persistQuietHoursTimezone()
+            pushQuietHours()
+        }
+    }
+
+    enum UploadOutcome {
+        case success
+        case failure
     }
 
     private(set) var isUploading = false
@@ -33,6 +44,10 @@ final class AppViewModel {
     private(set) var progress = UploadProgress.empty
     private(set) var statusText: String = ""
     private(set) var errorText: String?
+    private(set) var isServerReachable = true
+    private(set) var isRefreshingStatus = false
+    private(set) var lastUploadOutcome: UploadOutcome?
+    private(set) var uploadCompletionCount = 0
     private(set) var canvasBatteryPercentage: Int? {
         didSet {
             persistCanvasBatteryPercentage()
@@ -60,10 +75,15 @@ final class AppViewModel {
     private let userDefaults: UserDefaults
     private let sharedDefaults: UserDefaults?
 
+    // Last interval value confirmed by the server; guards against echoing a
+    // polled value back as an UpdatePlaylistInterval mutation.
+    private var serverCronIntervalInHours: Int?
+
     private var uploadTask: Task<Void, Never>?
     private var playlistStartTask: Task<Void, Never>?
     private var playlistPauseTask: Task<Void, Never>?
     private var playlistIntervalTask: Task<Void, Never>?
+    private var quietHoursTask: Task<Void, Never>?
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
@@ -133,6 +153,14 @@ final class AppViewModel {
         isPlaylistPaused && !isUploading && !isStartingPlaylist && !isPausingPlaylist
     }
 
+    var canEditInterval: Bool {
+        playlistProgress != nil
+    }
+
+    func clearError() {
+        errorText = nil
+    }
+
     func bootstrap() async {
         authorizationStatus = PhotoLibraryService.authorizationStatus()
         if !isPhotoAccessGranted {
@@ -147,19 +175,22 @@ final class AppViewModel {
     func refreshCanvasBattery() async {
         reloadConfigFromSettings()
         guard let baseURL = validatedHTTPURL(serverURL) else {
-            canvasBatteryPercentage = nil
-            lastFullChargeDate = nil
-            lastFullChargeDays = nil
-            lastPullDate = nil
-            playlistProgress = nil
+            isServerReachable = false
             return
         }
+
+        isRefreshingStatus = true
+        defer { isRefreshingStatus = false }
 
         let batteryService = CanvasStatusService(baseURL: baseURL)
         let playlistService = PlaylistService(baseURL: baseURL)
 
         async let batteryResult = batteryService.getBatteryData()
         async let progressResult = playlistService.getProgress()
+
+        // On transport errors, keep the last known values instead of blanking
+        // the UI — a single failed LAN poll must not erase the whole state.
+        var reachable = true
 
         do {
             if let batteryData = try await batteryResult {
@@ -184,23 +215,30 @@ final class AppViewModel {
                     lastPullDate = nil
                 }
             } else {
+                // The server answered but has never seen a battery report.
                 canvasBatteryPercentage = nil
                 lastFullChargeDate = nil
                 lastFullChargeDays = nil
                 lastPullDate = nil
             }
         } catch {
-            canvasBatteryPercentage = nil
-            lastFullChargeDate = nil
-            lastFullChargeDays = nil
-            lastPullDate = nil
+            reachable = false
         }
 
-        let progress = try? await progressResult
-        playlistProgress = progress
-        if let progress, playlistIntervalTask == nil {
-            cronIntervalInHours = progress.cronIntervalInHours
+        do {
+            let progress = try await progressResult
+            playlistProgress = progress
+            if let progress {
+                serverCronIntervalInHours = progress.cronIntervalInHours
+                if playlistIntervalTask == nil {
+                    cronIntervalInHours = progress.cronIntervalInHours
+                }
+            }
+        } catch {
+            reachable = false
         }
+
+        isServerReachable = reachable
 
         WidgetCenter.shared.reloadAllTimelines()
     }
@@ -310,6 +348,7 @@ final class AppViewModel {
 
     func updatePlaylistInterval(_ hours: Int) {
         guard playlistProgress != nil else { return }
+        guard hours != serverCronIntervalInHours else { return }
         guard let url = validatedHTTPURL(serverURL) else {
             errorText = AppError.invalidServerURL.localizedDescription
             return
@@ -324,6 +363,36 @@ final class AppViewModel {
             }
             await runPlaylistUpdateInterval(baseURL: url, hours: hours)
         }
+    }
+
+    private func pushQuietHours() {
+        guard playlistProgress != nil else { return }
+        guard let url = validatedHTTPURL(serverURL) else { return }
+
+        quietHoursTask?.cancel()
+        quietHoursTask = Task {
+            do {
+                try await Task.sleep(for: .milliseconds(500))
+            } catch {
+                return
+            }
+            await runQuietHoursUpdate(baseURL: url)
+        }
+    }
+
+    private func runQuietHoursUpdate(baseURL: URL) async {
+        defer { quietHoursTask = nil }
+
+        let service = PlaylistService(baseURL: baseURL)
+        do {
+            statusText = try await service.updateQuietHours(quietHoursPayload())
+        } catch {
+            errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+        }
+    }
+
+    private func quietHoursPayload() -> PlaylistService.QuietHoursPayload {
+        PlaylistService.QuietHoursPayload(enabled: quietHoursEnabled, timezone: quietHoursTimezone)
     }
 
     private func runUpload(albumId: String, baseURL: URL) async {
@@ -349,6 +418,8 @@ final class AppViewModel {
             _ = try await imageService.deleteAll()
         } catch {
             errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            lastUploadOutcome = .failure
+            uploadCompletionCount += 1
             return
         }
 
@@ -408,6 +479,8 @@ final class AppViewModel {
         }
 
         statusText = String(localized: "Terminé : \(progress.uploaded) envoyées, \(progress.failed) échecs.")
+        lastUploadOutcome = progress.failed > 0 ? .failure : .success
+        uploadCompletionCount += 1
     }
 
     private enum UploadItemResult {
@@ -459,14 +532,12 @@ final class AppViewModel {
 
         let service = PlaylistService(baseURL: baseURL)
         do {
-            let quietHoursPayload = quietHoursEnabled
-                ? PlaylistService.QuietHoursPayload(enabled: true, timezone: quietHoursTimezone)
-                : nil
-            statusText = try await service.start(
+            let result = try await service.start(
                 canvasURL: canvasURL,
                 cronIntervalInHours: cronIntervalInHours,
-                quietHours: quietHoursPayload
+                quietHours: quietHoursEnabled ? quietHoursPayload() : nil
             )
+            statusText = result.message
         } catch {
             errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
@@ -525,6 +596,7 @@ final class AppViewModel {
         let service = PlaylistService(baseURL: baseURL)
         do {
             statusText = try await service.updateInterval(cronIntervalInHours: hours)
+            serverCronIntervalInHours = hours
         } catch {
             errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }

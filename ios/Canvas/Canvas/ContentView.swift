@@ -5,6 +5,7 @@ struct ContentView: View {
     @State private var viewModel = AppViewModel()
     @Environment(\.scenePhase) private var scenePhase
     @State private var showingError = false
+    @State private var showingUploadConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -39,15 +40,18 @@ struct ContentView: View {
             }
         }
         .alert("Erreur", isPresented: $showingError, presenting: viewModel.errorText) { _ in
-            Button("OK", role: .cancel) { }
+            Button("OK", role: .cancel) {
+                viewModel.clearError()
+            }
         } message: { error in
             Text(error)
         }
         .onChange(of: viewModel.errorText) { _, newError in
             showingError = newError != nil
         }
-        .sensoryFeedback(.success, trigger: viewModel.progress.uploaded)
-        .sensoryFeedback(.error, trigger: viewModel.progress.failed)
+        .sensoryFeedback(trigger: viewModel.uploadCompletionCount) { _, _ in
+            viewModel.lastUploadOutcome == .failure ? .error : .success
+        }
     }
 
     private var configurationSection: some View {
@@ -113,12 +117,17 @@ struct ContentView: View {
             } label: {
                 Label("Intervalle", systemImage: "clock")
             }
+            .disabled(!viewModel.canEditInterval)
             .onChange(of: viewModel.cronIntervalInHours) { _, newValue in
                 guard (1...168).contains(newValue) else { return }
                 viewModel.updatePlaylistInterval(newValue)
             }
         } footer: {
-            Text("Le nouvel intervalle sera appliqué au prochain réveil du Canvas.")
+            if viewModel.canEditInterval {
+                Text("Le nouvel intervalle sera appliqué au prochain réveil du Canvas.")
+            } else {
+                Text("Démarrez une playlist pour pouvoir modifier l'intervalle.")
+            }
         }
     }
 
@@ -326,9 +335,21 @@ struct ContentView: View {
         if viewModel.isPhotoAccessGranted && !viewModel.albums.isEmpty && !viewModel.isUploading {
             Section {
                 Button("Uploader l'album") {
-                    viewModel.startUpload()
+                    showingUploadConfirmation = true
                 }
                 .disabled(!viewModel.canStartUpload)
+                .confirmationDialog(
+                    "Remplacer les photos du Canvas ?",
+                    isPresented: $showingUploadConfirmation,
+                    titleVisibility: .visible
+                ) {
+                    Button("Tout remplacer", role: .destructive) {
+                        viewModel.startUpload()
+                    }
+                    Button("Annuler", role: .cancel) { }
+                } message: {
+                    Text("Toutes les photos actuellement sur le serveur seront supprimées avant l'envoi de l'album sélectionné.")
+                }
 
                 if !viewModel.isPlaylistRunning && !viewModel.isPlaylistPaused {
                     Button(viewModel.isStartingPlaylist ? "Démarrage..." : "Démarrer la playlist") {
@@ -429,25 +450,4 @@ struct TimeZonePickerView: View {
         .navigationTitle("Fuseau horaire")
         .navigationBarTitleDisplayMode(.inline)
     }
-}
-
-@MainActor
-@Observable
-final class PreviewAppViewModel {
-    var canvasBatteryPercentage: Int? = 9
-    var lastFullChargeDays: Int? = 3
-    var serverURL: String = "http://192.168.0.165:3000"
-    var canvasURL: String = "http://192.168.0.174"
-    var cronIntervalInHours: String = "3"
-    var isPhotoAccessGranted: Bool = true
-    var albums: [PhotoAlbum] = [
-        PhotoAlbum(id: "1", title: "Vacances", photoCount: 42),
-        PhotoAlbum(id: "2", title: "Famille", photoCount: 128),
-        PhotoAlbum(id: "3", title: "Favoris", photoCount: 18)
-    ]
-    var selectedAlbumId: String? = "1"
-    var isUploading: Bool = false
-    var isStartingPlaylist: Bool = false
-    var progress: UploadProgress = .empty
-    var statusText: String = "Prêt à uploader"
 }
