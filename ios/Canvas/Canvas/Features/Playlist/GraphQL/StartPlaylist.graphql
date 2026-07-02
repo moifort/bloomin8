@@ -1,3 +1,6 @@
 mutation StartPlaylist($input: StartPlaylistInput!) {
-  startPlaylist(input: $input)
+  startPlaylist(input: $input) {
+    playlistId
+    wokeUp
+  }
 }

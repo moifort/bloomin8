@@ -3,7 +3,7 @@
 
 import ApolloAPI
 
-/// Optional window during which the device should not pull. Currently start=23 / end=07 are hard-coded server-side; only enabled and timezone are honored.
+/// Window during which the device should not pull new images
 public struct QuietHoursInput: InputObject {
   public private(set) var __data: InputDict
 
@@ -13,10 +13,14 @@ public struct QuietHoursInput: InputObject {
 
   public init(
     enabled: Bool,
+    end: GraphQLNullable<Int> = nil,
+    start: GraphQLNullable<Int> = nil,
     timezone: Timezone
   ) {
     __data = InputDict([
       "enabled": enabled,
+      "end": end,
+      "start": start,
       "timezone": timezone
     ])
   }
@@ -25,6 +29,18 @@ public struct QuietHoursInput: InputObject {
   public var enabled: Bool {
     get { __data["enabled"] }
     set { __data["enabled"] = newValue }
+  }
+
+  /// Hour at which the quiet window ends, in [0, 23]. Defaults to 7.
+  public var end: GraphQLNullable<Int> {
+    get { __data["end"] }
+    set { __data["end"] = newValue }
+  }
+
+  /// Hour at which the quiet window starts, in [0, 23]. Defaults to 23.
+  public var start: GraphQLNullable<Int> {
+    get { __data["start"] }
+    set { __data["start"] = newValue }
   }
 
   /// IANA timezone used to evaluate the quiet window (e.g. Europe/Paris)

@@ -1,0 +1,3 @@
+mutation UpdateQuietHours($input: QuietHoursInput!) {
+  updateQuietHours(input: $input)
+}

@@ -9,6 +9,4 @@ public enum PlaylistStatus: String, EnumType {
   case inProgress = "in_progress"
   /// Playlist is paused — pulls are deferred
   case paused = "paused"
-  /// Playlist exists but device pulling is stopped
-  case stop = "stop"
 }

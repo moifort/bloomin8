@@ -26,19 +26,19 @@ public class ResumePlaylistMutation: GraphQLMutation {
 
     /// ResumePlaylist
     ///
-    /// Parent Type: `PlaylistResumePayload`
+    /// Parent Type: `PlaylistWakeUpPayload`
     public struct ResumePlaylist: CanvasGraphQL.SelectionSet {
       public let __data: DataDict
       public init(_dataDict: DataDict) { __data = _dataDict }
 
-      public static var __parentType: any ApolloAPI.ParentType { CanvasGraphQL.Objects.PlaylistResumePayload }
+      public static var __parentType: any ApolloAPI.ParentType { CanvasGraphQL.Objects.PlaylistWakeUpPayload }
       public static var __selections: [ApolloAPI.Selection] { [
         .field("__typename", String.self),
         .field("playlistId", CanvasGraphQL.PlaylistId.self),
         .field("wokeUp", Bool.self),
       ] }
 
-      /// Identifier of the resumed playlist
+      /// Identifier of the affected playlist
       public var playlistId: CanvasGraphQL.PlaylistId { __data["playlistId"] }
       /// True if the BLOOMIN8 device acknowledged the wake-up call. False means it was unreachable and will catch up at its next scheduled pull.
       public var wokeUp: Bool { __data["wokeUp"] }

@@ -23,7 +23,7 @@ public enum SchemaMetadata: ApolloAPI.SchemaMetadata {
     case "BatteryInfo": return CanvasGraphQL.Objects.BatteryInfo
     case "Mutation": return CanvasGraphQL.Objects.Mutation
     case "PlaylistProgress": return CanvasGraphQL.Objects.PlaylistProgress
-    case "PlaylistResumePayload": return CanvasGraphQL.Objects.PlaylistResumePayload
+    case "PlaylistWakeUpPayload": return CanvasGraphQL.Objects.PlaylistWakeUpPayload
     case "Query": return CanvasGraphQL.Objects.Query
     default: return nil
     }
