@@ -43,12 +43,6 @@ export namespace CanvasCommand {
     },
   })
 
-  export const imageNotFoundResponse = (nextCronTime: Date) => ({
-    status: 204,
-    message: 'No image available',
-    data: { next_cron_time: CanvasDate(nextCronTime) },
-  })
-
   export const stopPullingResponse = () => ({
     status: 200,
     message: 'Stopping scheduled pull',

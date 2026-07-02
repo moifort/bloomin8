@@ -1,6 +1,7 @@
 import * as imageRepository from '~/domain/image/infrastructure/repository'
 import { ImageUrl, randomImageId } from '~/domain/image/primitives'
 import type { Image, ImageOrientation, ImageRaw } from '~/domain/image/types'
+import { PlaylistCommand } from '~/domain/playlist/command'
 
 export namespace ImageCommand {
   export const save = async (raw: ImageRaw, orientation: ImageOrientation) => {
@@ -19,6 +20,8 @@ export namespace ImageCommand {
   export const deleteAll = async () => {
     const ids = await imageRepository.findAllIds()
     await Promise.all(ids.map((id) => imageRepository.remove(id)))
+    // The playlist must never keep references to deleted images.
+    await PlaylistCommand.reconcileImages([])
     return ids.length
   }
 }

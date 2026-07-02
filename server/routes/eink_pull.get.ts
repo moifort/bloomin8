@@ -9,7 +9,5 @@ export default defineEventHandler(async () => {
   if (result === 'playlist-stopped') return CanvasCommand.stopPullingResponse()
   if (result === 'playlist-empty') return CanvasCommand.stopPullingResponse()
   if (result === 'playlist-paused') return CanvasCommand.deferPullResponse(24)
-  if (result === 'image-not-found')
-    return CanvasCommand.imageNotFoundResponse(new Date(Date.now() + 24 * 60 * 60 * 1000))
   return CanvasCommand.showImageResponse(serverUrl, result.nextImage.url, result.displayedAt)
 })

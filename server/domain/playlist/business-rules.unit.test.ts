@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import type { ImageId } from '~/domain/image/types'
-import { applyQuietHours, pickRandomImageId } from './business-rules'
+import { applyQuietHours, computeDisplayed, pickRandomImageId } from './business-rules'
 import { QuietHourEnd, QuietHourStart, Timezone } from './primitives'
 
 const ids = (values: string[]) => values as unknown as ImageId[]
@@ -49,5 +49,90 @@ describe('applyQuietHours', () => {
     const input = new Date('2026-01-01T12:00:00Z')
     const shifted = applyQuietHours(input, { enabled: true, timezone: tz, start, end })
     expect(shifted).toEqual(input)
+  })
+
+  test('accounts for minutes when shifting to the end hour', () => {
+    // 02:30 UTC, quiet 23h–7h → wait until exactly 07:00 UTC
+    const input = new Date('2026-01-01T02:30:00Z')
+    const shifted = applyQuietHours(input, { enabled: true, timezone: tz, start, end })
+    expect(shifted.getUTCHours()).toBe(7)
+    expect(shifted.getUTCMinutes()).toBe(0)
+  })
+
+  test('shifts a date at the quiet window start hour', () => {
+    // 23:00 UTC, quiet 23h–7h → wait until 07:00 UTC next day
+    const input = new Date('2026-01-01T23:00:00Z')
+    const shifted = applyQuietHours(input, { enabled: true, timezone: tz, start, end })
+    expect(shifted.getUTCDate()).toBe(2)
+    expect(shifted.getUTCHours()).toBe(7)
+  })
+
+  describe('non-midnight-crossing window (start < end)', () => {
+    const dayStart = QuietHourStart(9)
+    const dayEnd = QuietHourEnd(17)
+
+    test('shifts a date inside the window to the end hour', () => {
+      // 12:00 UTC, quiet 9h–17h → 17:00 UTC same day
+      const input = new Date('2026-01-01T12:00:00Z')
+      const shifted = applyQuietHours(input, {
+        enabled: true,
+        timezone: tz,
+        start: dayStart,
+        end: dayEnd,
+      })
+      expect(shifted.getUTCDate()).toBe(1)
+      expect(shifted.getUTCHours()).toBe(17)
+    })
+
+    test('leaves a date before the window unchanged', () => {
+      const input = new Date('2026-01-01T08:00:00Z')
+      const shifted = applyQuietHours(input, {
+        enabled: true,
+        timezone: tz,
+        start: dayStart,
+        end: dayEnd,
+      })
+      expect(shifted).toEqual(input)
+    })
+
+    test('leaves a date after the window unchanged', () => {
+      const input = new Date('2026-01-01T18:00:00Z')
+      const shifted = applyQuietHours(input, {
+        enabled: true,
+        timezone: tz,
+        start: dayStart,
+        end: dayEnd,
+      })
+      expect(shifted).toEqual(input)
+    })
+  })
+
+  test('treats start === end as no quiet window', () => {
+    const input = new Date('2026-01-01T12:00:00Z')
+    const shifted = applyQuietHours(input, {
+      enabled: true,
+      timezone: tz,
+      start: QuietHourStart(12),
+      end: QuietHourEnd(12),
+    })
+    expect(shifted).toEqual(input)
+  })
+})
+
+describe('computeDisplayed', () => {
+  test('returns the number of already displayed images', () => {
+    expect(computeDisplayed(10, 4)).toBe(6)
+  })
+
+  test('clamps to zero when remaining exceeds total (images deleted mid-cycle)', () => {
+    expect(computeDisplayed(4, 10)).toBe(0)
+  })
+
+  test('caps at total when nothing remains', () => {
+    expect(computeDisplayed(5, 0)).toBe(5)
+  })
+
+  test('returns zero when there are no images', () => {
+    expect(computeDisplayed(0, 0)).toBe(0)
   })
 })

@@ -1,5 +1,6 @@
 import { config } from '~/domain/config'
+import { createLogger } from '~/system/logger'
 
 export default defineNitroPlugin(() => {
-  console.log(`${JSON.stringify(config())}`)
+  createLogger('startup').info('Runtime config', config())
 })

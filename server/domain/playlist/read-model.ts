@@ -1,4 +1,5 @@
 import * as imageRepository from '~/domain/image/infrastructure/repository'
+import { computeDisplayed } from '~/domain/playlist/business-rules'
 import * as playlistRepository from '~/domain/playlist/infrastructure/repository'
 import { DEFAULT_PLAYLIST_ID } from '~/domain/playlist/primitives'
 import type { PlaylistId, PlaylistStatus } from '~/domain/playlist/types'
@@ -20,7 +21,7 @@ export const buildPlaylistProgress = async (
   const total = allImagesId.length
   const remaining = playlist.availableImagesId.length
   return {
-    displayed: total - remaining,
+    displayed: computeDisplayed(total, remaining),
     total,
     status: playlist.status,
     cronIntervalInHours: playlist.cronIntervalInHours,

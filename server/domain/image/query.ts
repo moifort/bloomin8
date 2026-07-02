@@ -8,7 +8,12 @@ export namespace ImageQuery {
   export const findByName = async (name: string) => {
     const [extractedId] = name.split('_')
     if (!extractedId) return null
-    return imageRepository.findById(ImageId(extractedId))
+    // A malformed id is a not-found, not a server error.
+    try {
+      return await imageRepository.findById(ImageId(extractedId))
+    } catch {
+      return null
+    }
   }
 
   export const findAllIds = () => imageRepository.findAllIds()
