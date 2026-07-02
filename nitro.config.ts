@@ -8,12 +8,6 @@ export default defineNitroConfig({
   },
   runtimeConfig: {
     serverUrl: 'http://192.168.0.164:3000',
-    homekit: {
-      // Overridable via NITRO_HOMEKIT_PINCODE / _USERNAME / _PORT.
-      pincode: '031-45-154',
-      username: 'CA:11:A5:00:00:01', // valid hex MAC required by hap-nodejs
-      port: 47129,
-    },
   },
   storage: {
     images: {

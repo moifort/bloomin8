@@ -6,9 +6,9 @@ dist
 .output
 .env.local
 .derivedData
-images
-data
-output
+/data/
+/output/
+.DS_Store
 
  Xcode user state
 *.xcuserstate
