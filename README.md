@@ -61,7 +61,7 @@ A ready-to-use CasaOS configuration is available in `docker-compose.casaos.yml`.
 
 ### iOS App
 
-Build and install the iOS app from `ios/Canvas/` using Xcode. On first launch, set the server URL to point to your Canvas server (e.g. `http://192.168.0.165:3000`).
+Build and install the iOS app from `ios/Canvas/` using Xcode. On first launch, open the in-app settings screen ("Modifier les réglages") to point the server URL at your Canvas server (e.g. `http://192.168.0.165:3000`) — a "test connection" button checks it is reachable.
 
 ![iOS App](ios.PNG)
 

@@ -73,7 +73,7 @@ server/
 │   └── health.get.ts                         # Docker healthcheck
 ├── middleware/canvas-battery.ts              # Captures ?battery=X from /eink_pull
 ├── plugins/
-│   ├── 00-startup.ts | 01-logger.ts          # Bootstrap + logging
+│   ├── startup.ts | logger.ts                # Bootstrap + logging
 │   └── 02-graphql.ts                         # ApolloServer instantiation + setApollo()
 ├── utils/apollo.ts                           # useApollo() singleton
 └── system/logger.ts                          # createLogger(tag) wrapper
@@ -89,7 +89,7 @@ server/
 
 - **Endpoint**: `POST /graphql` for operations, `GET /graphql` for Apollo Sandbox in dev.
 - **Schema**: code-first with Pothos. `defaultFieldNullability: false` — every field is `!` unless explicitly marked `nullable: true`.
-- **Custom scalars**: every branded type has a Pothos scalar (Hour, Percentage, PlaylistId, Timezone, ImageId, ImageUrl, CanvasUrl, ServerUrl, CanvasDate) wired to its Zod constructor via `validatedParse`. Errors surface as `GraphQLError(BAD_USER_INPUT)`.
+- **Custom scalars**: every branded type exposed in the schema has a Pothos scalar (Hour, Percentage, PlaylistId, Timezone, CanvasUrl, ServerUrl, CanvasDate) wired to its Zod constructor via `validatedParse`. Errors surface as `GraphQLError(BAD_USER_INPUT)`. Branded types used only by REST/storage (ImageId, ImageUrl) have no scalar.
 - **SDL export**: committed to `shared/schema.graphql`. Regenerate via `bun run generate:graphql`. Excluded from biome formatting (Pothos owns its canonical formatting).
 - **Tree-shaking**: `nitro.config.ts` whitelists `/graphql/` paths in `rollupConfig.treeshake.moduleSideEffects` — without it Rollup elides the side-effect imports of query/mutation files, leaving Apollo with an empty schema.
 
@@ -104,13 +104,15 @@ server/
 `nitro.config.ts` runtime config:
 - `NITRO_SERVER_URL`: Public URL the device should call back (default: `http://192.168.0.164:3000`)
 
+The iOS app has its own default server URL (`http://192.168.0.165:3000` in `CanvasSettings.swift`) — both point at whatever machine runs the server on your LAN and are editable in the app's settings screen.
+
 ### BLOOMIN8 Device Protocol (REST, unchanged)
 
 1. Server wakes the device with `PUT {deviceUrl}/upstream/pull_settings` carrying `cron_time` + `upstream_url` (called by `CanvasCommand.wakeUp`).
 2. Device pulls `GET {serverUrl}/eink_pull?device_id&pull_id&cron_time&battery`.
 3. Server responds with `image_url` and `next_cron_time` (ISO 8601 UTC, no milliseconds).
-4. Device displays the JPEG (rotated 90° CCW for `_L.jpg`) and may call `GET {serverUrl}/eink_signal?pull_id&success`.
-5. Device sleeps until `next_cron_time`.
+4. Device displays the JPEG (rotated 90° CCW for `_L.jpg`) and may call `GET {serverUrl}/eink_signal?pull_id&success` (acknowledged and logged, intentionally not persisted).
+5. Device sleeps until `next_cron_time`. A paused playlist defers the next pull by the configured `cronIntervalInHours`.
 
 The `canvas-battery` middleware captures `?battery=X` on `/eink_pull` and persists it to the `canvas` bucket.
 
@@ -139,14 +141,17 @@ ios/
     ├── Canvas.xcodeproj
     ├── Canvas/
     │   ├── Features/
-    │   │   ├── Playlist/GraphQL/             # 5 .graphql operations
+    │   │   ├── Playlist/GraphQL/             # 6 .graphql operations (incl. UpdateQuietHours)
     │   │   ├── Images/GraphQL/               # DeleteAllImages
-    │   │   └── Canvas/GraphQL/               # CanvasBattery
+    │   │   ├── Canvas/GraphQL/               # CanvasBattery
+    │   │   └── System/GraphQL/               # Health (settings "test connection")
     │   ├── Shared/GraphQLClient.swift        # ApolloClient factory + async bridges
-    │   ├── PlaylistService.swift             # Wraps StartPlaylist/Pause/Resume/Progress mutations
+    │   ├── Shared/CanvasSettings.swift       # URL defaults, validation, App Group sync
+    │   ├── PlaylistService.swift             # Wraps Start/Pause/Resume/Progress/QuietHours
     │   ├── ImageService.swift                # Wraps DeleteAllImages
     │   ├── CanvasStatusService.swift         # Wraps CanvasBattery query
     │   ├── UploadService.swift               # REST POST /upload (raw JPEG)
+    │   ├── SettingsView.swift                # In-app server/device URL editor + health test
     │   └── AppViewModel.swift                # Orchestrates services
     ├── CanvasBatteryWidget/
     │   ├── GraphQL/CanvasBatteryWidget.graphql
@@ -160,7 +165,8 @@ ios/
 
 - **AppViewModel.swift**: single source of truth, manages upload queue (max 5 concurrent), drives the GraphQL services. Keeps original public API; only the underlying transport changed.
 - **GraphQLClient.swift**: `client(for: URL)` factory; `fetchAsync` / `performAsync` extensions bridge Apollo's callback API to async/await. No auth interceptor — bloomin8 runs on a trusted local network.
-- **Widget**: timeline provider hits `/graphql` directly via a private inlined `WidgetGraphQLClient` (the widget extension can't import sibling Canvas-target files but does share `CanvasGraphQL` SPM package).
+- **SettingsView.swift**: in-app editor for the server/device URLs with validation and a "test connection" action (GraphQL `health` query). Replaced the old Settings.bundle; `CanvasSettings.syncToAppGroup()` keeps the widget in sync.
+- **Widget**: timeline provider hits `/graphql` directly via a private inlined `WidgetGraphQLClient` (the widget extension can't import sibling Canvas-target files but does share `CanvasGraphQL` SPM package). `CanvasWidgetStore` duplicates the shared UserDefaults keys for the same reason.
 - **Custom scalars** are typealiased to `String` by default. Numeric scalars (Hour, Percentage) are converted at the service boundary via `Int(scalar)`.
 
 ### Codegen Workflow
@@ -173,7 +179,7 @@ ios/
 ## Testing
 
 ### Backend
-- `bun test`: unit tests on `*.unit.test.ts` files (primitives + business-rules). 42 tests at the time of this writing.
+- `bun test`: unit tests on `*.unit.test.ts` files (primitives + business-rules). 54 tests at the time of this writing.
 - `api.http`: ready-to-run REST + GraphQL request samples.
 - `bun run dev` + `curl` for end-to-end smoke testing.
 
@@ -187,7 +193,7 @@ Build and run in Xcode (or `xcodebuild` from CLI). Widget testing:
 
 - **Image Orientation**: stored portrait, filename suffix (`_P` / `_L`) drives device rotation.
 - **Time Format**: device protocol uses ISO 8601 UTC without milliseconds (`2025-11-01T08:30:00Z`). `CanvasDate` primitive enforces this.
-- **Battery Tracking**: middleware `server/middleware/canvas-battery.ts` captures `?battery=X` on every request, hot-applied for `/eink_pull`.
+- **Battery Tracking**: middleware `server/middleware/canvas-battery.ts` captures `?battery=X` on `/eink_pull` only; malformed values are logged and ignored, never breaking the device response.
 - **Type Safety**: never bypass branded types or `match().exhaustive()` — they prevent runtime errors.
 - **Concurrency**: iOS app limits concurrent uploads to 5 to prevent memory issues with large photos.
 - **DEFAULT_PLAYLIST_ID**: bloomin8 is mono-playlist by design; the canonical id is exported from `server/domain/playlist/primitives.ts`.
