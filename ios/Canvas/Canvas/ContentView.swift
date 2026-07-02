@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 struct ContentView: View {
     @State private var viewModel = AppViewModel()
@@ -14,6 +13,10 @@ struct ContentView: View {
                 quietHoursSection
                 batterySection
                 photoSection
+            }
+            .refreshable {
+                await viewModel.refreshCanvasBattery()
+                viewModel.reloadAlbums()
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -52,6 +55,7 @@ struct ContentView: View {
         .sensoryFeedback(trigger: viewModel.uploadCompletionCount) { _, _ in
             viewModel.lastUploadOutcome == .failure ? .error : .success
         }
+        .sensoryFeedback(.success, trigger: viewModel.playlistActionCount)
     }
 
     private var configurationSection: some View {
@@ -76,12 +80,14 @@ struct ContentView: View {
                 Label("BLOOMIN8", systemImage: "photo.on.rectangle.angled")
             }
 
-            Button {
-                if let url = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(url)
+            NavigationLink {
+                SettingsView {
+                    Task {
+                        await viewModel.refreshCanvasBattery()
+                    }
                 }
             } label: {
-                Label("Modifier dans Réglages", systemImage: "gearshape")
+                Label("Modifier les réglages", systemImage: "gearshape")
             }
 
             LabeledContent {
@@ -148,12 +154,23 @@ struct ContentView: View {
                 }
 
                 if viewModel.quietHoursEnabled {
-                    LabeledContent {
-                        Text("23h – 7h")
-                            .foregroundStyle(.secondary)
+                    Picker(selection: $viewModel.quietHoursStart) {
+                        ForEach(0..<24, id: \.self) { hour in
+                            Text("\(hour)h").tag(hour)
+                        }
                     } label: {
-                        Label("Horaires", systemImage: "clock")
+                        Label("Début", systemImage: "moon.stars")
                     }
+                    .pickerStyle(.menu)
+
+                    Picker(selection: $viewModel.quietHoursEnd) {
+                        ForEach(0..<24, id: \.self) { hour in
+                            Text("\(hour)h").tag(hour)
+                        }
+                    } label: {
+                        Label("Fin", systemImage: "sun.horizon")
+                    }
+                    .pickerStyle(.menu)
 
                     NavigationLink {
                         TimeZonePickerView(selection: $viewModel.quietHoursTimezone)
@@ -169,7 +186,7 @@ struct ContentView: View {
             }
             .disabled(viewModel.isPlaylistPaused)
         } footer: {
-            Text(String(localized: "Pause le défilement des images entre 23h et 7h dans le fuseau horaire sélectionné. Le Canvas reste en veille pendant cette période."))
+            Text("Pause le défilement des images entre \(viewModel.quietHoursStart)h et \(viewModel.quietHoursEnd)h dans le fuseau horaire sélectionné. Le Canvas reste en veille pendant cette période.")
         }
     }
 
@@ -197,6 +214,23 @@ struct ContentView: View {
 
     private var batterySection: some View {
         Section {
+            if !viewModel.isServerReachable {
+                HStack {
+                    Label("Serveur injoignable", systemImage: "wifi.exclamationmark")
+                        .foregroundStyle(.orange)
+
+                    Spacer()
+
+                    Button("Réessayer") {
+                        Task {
+                            await viewModel.refreshCanvasBattery()
+                        }
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(viewModel.isRefreshingStatus)
+                }
+            }
+
             HStack {
                 Label {
                     Text("Batterie")
@@ -207,11 +241,17 @@ struct ContentView: View {
 
                 Spacer()
 
-                Text(canvasBatteryPercentageText)
-                    .foregroundStyle(canvasBatteryColor)
-                    .fontWeight(.semibold)
-                    .contentTransition(.numericText())
+                if viewModel.canvasBatteryPercentage == nil && viewModel.isRefreshingStatus {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Text(canvasBatteryPercentageText)
+                        .foregroundStyle(canvasBatteryColor)
+                        .fontWeight(.semibold)
+                        .contentTransition(.numericText())
+                }
             }
+            .opacity(viewModel.isServerReachable ? 1 : 0.5)
 
             if let days = viewModel.lastFullChargeDays {
                 LabeledContent {

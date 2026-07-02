@@ -9,7 +9,7 @@ struct CanvasApp: App {
             CanvasSettings.serverURLKey: CanvasSettings.defaultServerURL,
             CanvasSettings.deviceURLKey: CanvasSettings.defaultDeviceURL,
         ])
-        Self.syncSettings()
+        CanvasSettings.syncToAppGroup()
     }
 
     var body: some Scene {
@@ -18,25 +18,8 @@ struct CanvasApp: App {
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
-                Self.syncSettings()
+                CanvasSettings.syncToAppGroup()
             }
         }
     }
-
-    private static func syncSettings() {
-        let standard = UserDefaults.standard
-        let shared = UserDefaults(suiteName: CanvasSettings.appGroupSuiteName)
-        let serverURL = standard.string(forKey: CanvasSettings.serverURLKey) ?? CanvasSettings.defaultServerURL
-        let deviceURL = standard.string(forKey: CanvasSettings.deviceURLKey) ?? CanvasSettings.defaultDeviceURL
-        shared?.set(serverURL, forKey: CanvasSettings.serverURLKey)
-        shared?.set(deviceURL, forKey: CanvasSettings.deviceURLKey)
-    }
-}
-
-enum CanvasSettings {
-    static let appGroupSuiteName = "group.polyforms.canvas"
-    static let serverURLKey = "canvas.server.url"
-    static let deviceURLKey = "canvas.device.url"
-    static let defaultServerURL = "http://192.168.0.165:3000"
-    static let defaultDeviceURL = "http://192.168.0.174"
 }

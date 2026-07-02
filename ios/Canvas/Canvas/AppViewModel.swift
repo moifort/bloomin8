@@ -13,6 +13,8 @@ final class AppViewModel {
     private static let playlistTotalDefaultsKey = "canvas.playlist.total"
     private static let quietHoursEnabledDefaultsKey = "canvas.quiet-hours.enabled"
     private static let quietHoursTimezoneDefaultsKey = "canvas.quiet-hours.timezone"
+    private static let quietHoursStartDefaultsKey = "canvas.quiet-hours.start"
+    private static let quietHoursEndDefaultsKey = "canvas.quiet-hours.end"
 
     private(set) var authorizationStatus: PHAuthorizationStatus = PhotoLibraryService.authorizationStatus()
     private(set) var albums: [PhotoAlbum] = []
@@ -32,6 +34,18 @@ final class AppViewModel {
             pushQuietHours()
         }
     }
+    var quietHoursStart: Int {
+        didSet {
+            userDefaults.set(quietHoursStart, forKey: Self.quietHoursStartDefaultsKey)
+            pushQuietHours()
+        }
+    }
+    var quietHoursEnd: Int {
+        didSet {
+            userDefaults.set(quietHoursEnd, forKey: Self.quietHoursEndDefaultsKey)
+            pushQuietHours()
+        }
+    }
 
     enum UploadOutcome {
         case success
@@ -48,6 +62,9 @@ final class AppViewModel {
     private(set) var isRefreshingStatus = false
     private(set) var lastUploadOutcome: UploadOutcome?
     private(set) var uploadCompletionCount = 0
+    // Bumped after each successful playlist action (start/pause/resume) so the
+    // view can emit a single haptic per action.
+    private(set) var playlistActionCount = 0
     private(set) var canvasBatteryPercentage: Int? {
         didSet {
             persistCanvasBatteryPercentage()
@@ -96,6 +113,8 @@ final class AppViewModel {
             ?? CanvasSettings.defaultDeviceURL
         self.quietHoursEnabled = userDefaults.bool(forKey: Self.quietHoursEnabledDefaultsKey)
         self.quietHoursTimezone = userDefaults.string(forKey: Self.quietHoursTimezoneDefaultsKey) ?? TimeZone.current.identifier
+        self.quietHoursStart = userDefaults.object(forKey: Self.quietHoursStartDefaultsKey) as? Int ?? 23
+        self.quietHoursEnd = userDefaults.object(forKey: Self.quietHoursEndDefaultsKey) as? Int ?? 7
 
         if let cached = userDefaults.object(forKey: Self.batteryPercentageDefaultsKey) as? Int {
             self.canvasBatteryPercentage = cached
@@ -392,7 +411,12 @@ final class AppViewModel {
     }
 
     private func quietHoursPayload() -> PlaylistService.QuietHoursPayload {
-        PlaylistService.QuietHoursPayload(enabled: quietHoursEnabled, timezone: quietHoursTimezone)
+        PlaylistService.QuietHoursPayload(
+            enabled: quietHoursEnabled,
+            timezone: quietHoursTimezone,
+            start: quietHoursStart,
+            end: quietHoursEnd
+        )
     }
 
     private func runUpload(albumId: String, baseURL: URL) async {
@@ -538,6 +562,7 @@ final class AppViewModel {
                 quietHours: quietHoursEnabled ? quietHoursPayload() : nil
             )
             statusText = result.message
+            playlistActionCount += 1
         } catch {
             errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
@@ -558,6 +583,7 @@ final class AppViewModel {
         let service = PlaylistService(baseURL: baseURL)
         do {
             statusText = try await service.pause()
+            playlistActionCount += 1
         } catch {
             errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
@@ -579,6 +605,7 @@ final class AppViewModel {
         do {
             let result = try await service.resume()
             statusText = result.message
+            playlistActionCount += 1
         } catch {
             errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
@@ -605,12 +632,7 @@ final class AppViewModel {
     }
 
     private func validatedHTTPURL(_ rawValue: String) -> URL? {
-        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = URL(string: trimmed), ["http", "https"].contains(url.scheme?.lowercased()) else {
-            return nil
-        }
-
-        return url
+        CanvasSettings.validatedHTTPURL(rawValue)
     }
 
     private func persistCanvasBatteryPercentage() {

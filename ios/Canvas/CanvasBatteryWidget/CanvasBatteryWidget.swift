@@ -30,6 +30,11 @@ private struct CanvasBatteryProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (CanvasBatteryEntry) -> Void) {
+        // The widget gallery should render instantly, without a network fetch.
+        if context.isPreview {
+            completion(placeholder(in: context))
+            return
+        }
         Task {
             completion(await buildEntry())
         }
@@ -461,7 +466,7 @@ private struct CanvasBatteryWidgetView: View {
     }
 
     private var widgetTitleView: some View {
-        Text("Canvas Battery")
+        Text("Batterie Canvas")
             .font(.headline)
             .foregroundStyle(.primary)
             .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
@@ -477,8 +482,8 @@ struct CanvasBatteryWidget: Widget {
         StaticConfiguration(kind: kind, provider: CanvasBatteryProvider()) { entry in
             CanvasBatteryWidgetView(entry: entry)
         }
-        .configurationDisplayName("Canvas Battery")
-        .description("Displays the latest Canvas battery level.")
+        .configurationDisplayName(String(localized: "Batterie Canvas"))
+        .description(String(localized: "Affiche le niveau de batterie du Canvas."))
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
         .containerBackgroundRemovable(true)
     }
