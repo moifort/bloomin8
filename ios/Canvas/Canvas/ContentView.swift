@@ -99,6 +99,7 @@ struct ContentView: View {
                     }
                     .buttonStyle(.borderless)
                     .disabled(viewModel.cronIntervalInHours <= 1)
+                    .accessibilityLabel("Réduire l'intervalle")
 
                     HStack(spacing: 2) {
                         Text("\(viewModel.cronIntervalInHours)")
@@ -119,6 +120,7 @@ struct ContentView: View {
                     }
                     .buttonStyle(.borderless)
                     .disabled(viewModel.cronIntervalInHours >= 168)
+                    .accessibilityLabel("Augmenter l'intervalle")
                 }
             } label: {
                 Label("Intervalle", systemImage: "clock")
@@ -252,10 +254,16 @@ struct ContentView: View {
                 }
             }
             .opacity(viewModel.isServerReachable ? 1 : 0.5)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Batterie du Canvas")
+            .accessibilityValue(
+                viewModel.canvasBatteryPercentage.map { String(localized: "\($0) pour cent") }
+                    ?? String(localized: "Indisponible")
+            )
 
             if let days = viewModel.lastFullChargeDays {
                 LabeledContent {
-                    Text("\(days) jour\(days > 1 ? "s" : "")")
+                    Text("^[\(days) jour](inflect: true)")
                         .foregroundStyle(.secondary)
                 } label: {
                     Label("Dernière charge complète", systemImage: "clock.arrow.circlepath")
@@ -288,7 +296,8 @@ struct ContentView: View {
             }
         } footer: {
             if let percentage = viewModel.canvasBatteryPercentage, percentage < 10 {
-                Text("⚠️ Batterie faible, pensez à recharger le Canvas")
+                Label("Batterie faible, pensez à recharger le Canvas", systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
             }
         }
     }
@@ -398,7 +407,7 @@ struct ContentView: View {
                     .disabled(!viewModel.canStartPlaylist)
                 }
             } footer: {
-                Text("Pour lancer la playlist le canvas doit être accessible sur le réseau. Reveillez le a partir de l'application BLOOMIN8")
+                Text("Pour lancer la playlist, le Canvas doit être accessible sur le réseau. Réveillez-le à partir de l'application BLOOMIN8.")
                     .font(.footnote)
             }
         }

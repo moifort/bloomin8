@@ -440,6 +440,12 @@ private struct CanvasBatteryWidgetView: View {
                 .widgetAccentable()
         }
         .frame(width: size, height: size)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(localized: "Batterie Canvas"))
+        .accessibilityValue(
+            entry.percentage.map { String(localized: "\($0) pour cent") }
+                ?? String(localized: "Indisponible")
+        )
     }
 
     private func batteryPercentageView(in geometry: GeometryProxy) -> some View {

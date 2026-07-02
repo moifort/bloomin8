@@ -3,106 +3,55 @@
   "strings" : {
     "%@ (%lld)" : {
       "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ (%2$lld)"
+          }
+        },
         "fr" : {
           "stringUnit" : {
-            "state" : "new",
+            "state" : "translated",
             "value" : "%1$@ (%2$lld)"
           }
         }
       }
     },
-    "%@h" : {
-      "extractionState" : "stale",
+    "%lld" : {
+      "shouldTranslate" : false
+    },
+    "%lld ms" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@h"
+            "value" : "%lld ms"
           }
         }
       }
     },
-    "%lld" : {
-
-    },
-    "%lld jour(s)" : {
-      "comment" : "Number of days since last full charge",
-      "extractionState" : "stale",
+    "%lld pour cent" : {
       "localizations" : {
         "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld day"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld days"
-                }
-              }
-            }
-          }
-        },
-        "fr" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld jour"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld jours"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "%lld jour%@" : {
-      "localizations" : {
-        "fr" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld jour%2$@"
+            "state" : "translated",
+            "value" : "%lld percent"
           }
         }
       }
     },
     "%lld/%lld" : {
       "localizations" : {
-        "fr" : {
+        "en" : {
           "stringUnit" : {
-            "state" : "new",
+            "state" : "translated",
             "value" : "%1$lld/%2$lld"
           }
-        }
-      }
-    },
-    "⚠️ Batterie faible, pensez à recharger le Canvas" : {
-      "localizations" : {
-        "en" : {
+        },
+        "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "⚠️ Low battery, consider recharging the Canvas"
-          }
-        }
-      }
-    },
-    "23h – 7h" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "11 PM – 7 AM"
+            "value" : "%1$lld/%2$lld"
           }
         }
       }
@@ -133,6 +82,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Refresh"
+          }
+        }
+      }
+    },
+    "Adresse du Canvas e-ink, utilisée pour le réveiller au lancement de la playlist." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Address of the e-ink Canvas, used to wake it up when starting the playlist."
+          }
+        }
+      }
+    },
+    "Adresse du serveur bloomin8 sur votre réseau local (ex. http://192.168.0.165:3000)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Address of the bloomin8 server on your local network (e.g. http://192.168.0.165:3000)."
           }
         }
       }
@@ -187,12 +156,32 @@
         }
       }
     },
+    "Augmenter l'intervalle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Increase interval"
+          }
+        }
+      }
+    },
     "Autoriser l'accès" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Grant Access"
+          }
+        }
+      }
+    },
+    "BLOOMIN8" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "BLOOMIN8"
           }
         }
       }
@@ -207,12 +196,22 @@
         }
       }
     },
-    "BLOOMIN8" : {
+    "Batterie du Canvas" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "BLOOMIN8"
+            "value" : "Canvas battery"
+          }
+        }
+      }
+    },
+    "Batterie faible, pensez à recharger le Canvas" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Low battery — remember to recharge the Canvas"
           }
         }
       }
@@ -237,22 +236,12 @@
         }
       }
     },
-    "Démarrage..." : {
+    "Connexion impossible" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Starting..."
-          }
-        }
-      }
-    },
-    "Démarrer la playlist" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Start playlist"
+            "value" : "Connection failed"
           }
         }
       }
@@ -287,12 +276,62 @@
         }
       }
     },
+    "Début" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        }
+      }
+    },
+    "Démarrage..." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starting..."
+          }
+        }
+      }
+    },
+    "Démarrer la playlist" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start playlist"
+          }
+        }
+      }
+    },
+    "Démarrez une playlist pour pouvoir modifier l'intervalle." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start a playlist to be able to change the interval."
+          }
+        }
+      }
+    },
     "Endpoint d'upload invalide." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Invalid upload endpoint."
+          }
+        }
+      }
+    },
+    "Enregistrer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save"
           }
         }
       }
@@ -307,25 +346,22 @@
         }
       }
     },
+    "Fin" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End"
+          }
+        }
+      }
+    },
     "Fuseau horaire" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Time zone"
-          }
-        }
-      }
-    },
-    "h" : {
-
-    },
-    "Horaires" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Schedule"
           }
         }
       }
@@ -391,7 +427,14 @@
       }
     },
     "Le nouvel intervalle sera appliqué au prochain réveil du Canvas." : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The new interval will apply the next time the Canvas wakes up."
+          }
+        }
+      }
     },
     "Lecture de l'album..." : {
       "localizations" : {
@@ -433,8 +476,25 @@
         }
       }
     },
-    "Modifier dans Réglages" : {
-
+    "Mode nuit mis à jour" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Night mode updated"
+          }
+        }
+      }
+    },
+    "Modifier les réglages" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit settings"
+          }
+        }
+      }
     },
     "OK" : {
       "localizations" : {
@@ -442,6 +502,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "OK"
+          }
+        }
+      }
+    },
+    "Pause le défilement des images entre %lldh et %lldh dans le fuseau horaire sélectionné. Le Canvas reste en veille pendant cette période." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pauses image rotation between %1$lld:00 and %2$lld:00 in the selected timezone. The Canvas stays asleep during that period."
           }
         }
       }
@@ -467,7 +537,14 @@
       }
     },
     "Playlist" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playlist"
+          }
+        }
+      }
     },
     "Playlist (en pause)" : {
       "localizations" : {
@@ -485,6 +562,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Playlist paused"
+          }
+        }
+      }
+    },
+    "Playlist enregistrée — le Canvas la démarrera à son prochain réveil." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playlist saved — the Canvas will start it the next time it wakes up."
           }
         }
       }
@@ -519,6 +606,16 @@
         }
       }
     },
+    "Pour lancer la playlist, le Canvas doit être accessible sur le réseau. Réveillez-le à partir de l'application BLOOMIN8." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "To start the playlist, the Canvas must be reachable on the network. Wake it up from the BLOOMIN8 app."
+          }
+        }
+      }
+    },
     "Rechercher" : {
       "localizations" : {
         "en" : {
@@ -529,36 +626,12 @@
         }
       }
     },
-    "Réponse batterie invalide." : {
-      "extractionState" : "stale",
+    "Remplacer les photos du Canvas ?" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Invalid battery response."
-          }
-        }
-      }
-    },
-    "Réponse GraphQL invalide." : {
-
-    },
-    "Réponse HTTP invalide." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Invalid HTTP response."
-          }
-        }
-      }
-    },
-    "Réponse upload invalide." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Invalid upload response."
+            "value" : "Replace the Canvas photos?"
           }
         }
       }
@@ -594,12 +667,73 @@
         }
       }
     },
-    "Sélectionnez un album." : {
+    "Réduire l'intervalle" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Select an album."
+            "value" : "Decrease interval"
+          }
+        }
+      }
+    },
+    "Réessayer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
+          }
+        }
+      }
+    },
+    "Réglages" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        }
+      }
+    },
+    "Réponse GraphQL invalide." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid GraphQL response."
+          }
+        }
+      }
+    },
+    "Réponse HTTP invalide." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid HTTP response."
+          }
+        }
+      }
+    },
+    "Réponse batterie invalide." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid battery response."
+          }
+        }
+      }
+    },
+    "Réponse upload invalide." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid upload response."
           }
         }
       }
@@ -624,8 +758,25 @@
         }
       }
     },
+    "Serveur injoignable" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server unreachable"
+          }
+        }
+      }
+    },
     "Serveur: %@" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server: %@"
+          }
+        }
+      }
     },
     "Suppression des photos serveur..." : {
       "localizations" : {
@@ -637,12 +788,102 @@
         }
       }
     },
+    "Sélectionnez un album." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select an album."
+          }
+        }
+      }
+    },
     "Terminé : %lld envoyées, %lld échecs." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Done: %lld uploaded, %lld failed."
+          }
+        }
+      }
+    },
+    "Tester la connexion" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test connection"
+          }
+        }
+      }
+    },
+    "Tout remplacer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Replace all"
+          }
+        }
+      }
+    },
+    "Toutes les photos actuellement sur le serveur seront supprimées avant l'envoi de l'album sélectionné." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All photos currently on the server will be deleted before uploading the selected album."
+          }
+        }
+      }
+    },
+    "URL Canvas invalide." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid Canvas URL."
+          }
+        }
+      }
+    },
+    "URL du Canvas" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Canvas URL"
+          }
+        }
+      }
+    },
+    "URL du serveur" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server URL"
+          }
+        }
+      }
+    },
+    "URL invalide" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid URL"
+          }
+        }
+      }
+    },
+    "URL serveur invalide." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Invalid server URL."
           }
         }
       }
@@ -697,22 +938,25 @@
         }
       }
     },
-    "URL Canvas invalide." : {
+    "^[%lld jour](inflect: true)" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Invalid Canvas URL."
+            "value" : "^[%lld day](inflect: true)"
           }
         }
       }
     },
-    "URL serveur invalide." : {
+    "h" : {
+      "shouldTranslate" : false
+    },
+    "⚠️ Batterie faible, pensez à recharger le Canvas" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Invalid server URL."
+            "value" : "⚠️ Low battery, consider recharging the Canvas"
           }
         }
       }

@@ -1,11 +1,35 @@
 {
   "sourceLanguage" : "fr",
   "strings" : {
-    "--" : {
-
+    "%lld / %lld" : {
+      "comment" : "Playlist progress: displayed of total",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld / %2$lld"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld / %2$lld"
+          }
+        }
+      }
+    },
+    "%lld pour cent" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld percent"
+          }
+        }
+      }
     },
     "%lld%%" : {
-
+      "shouldTranslate" : false
     },
     "%lldj" : {
       "comment" : "Days since last charge, shown in widget",
@@ -18,34 +42,35 @@
         }
       }
     },
-    "Canvas Battery" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Canvas Battery"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Batterie Canvas"
-          }
-        }
-      }
+    "--" : {
+      "shouldTranslate" : false
     },
-    "Displays the latest Canvas battery level." : {
+    "Affiche le niveau de batterie du Canvas." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Displays the latest Canvas battery level."
           }
-        },
-        "fr" : {
+        }
+      }
+    },
+    "Batterie Canvas" : {
+      "localizations" : {
+        "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Affiche le niveau de batterie du Canvas."
+            "value" : "Canvas Battery"
+          }
+        }
+      }
+    },
+    "Indisponible" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unavailable"
           }
         }
       }
