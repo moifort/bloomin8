@@ -30,8 +30,14 @@ export namespace PlaylistCommand {
       availableImagesId,
       quietHours,
     })
-    await CanvasCommand.wakeUp(canvasUrl, serverUrl)
-    return playlistId
+    let wokeUp = false
+    try {
+      await CanvasCommand.wakeUp(canvasUrl, serverUrl)
+      wokeUp = true
+    } catch (error) {
+      log.warn('canvas unreachable on start, will start at next natural pull', error)
+    }
+    return { playlistId, wokeUp }
   }
 
   export const updateInterval = async (
@@ -63,11 +69,18 @@ export namespace PlaylistCommand {
             refilled = true
             continue
           }
-          const nextImageId = pickRandomImageId(candidates)
+          const nextImageId = pickRandomImageId(
+            candidates,
+            refilled ? playlist.lastImageId : undefined,
+          )
           candidates = candidates.filter((id) => id !== nextImageId)
           const nextImage: Image | null = await imageRepository.findById(nextImageId)
           if (!nextImage) continue
-          await playlistRepository.save({ ...playlist, availableImagesId: candidates })
+          await playlistRepository.save({
+            ...playlist,
+            availableImagesId: candidates,
+            lastImageId: nextImageId,
+          })
           return {
             nextImage,
             displayedAt: applyQuietHours(
@@ -77,9 +90,18 @@ export namespace PlaylistCommand {
           }
         }
       })
-      .with('stop', () => 'playlist-stopped' as const)
       .with('paused', () => 'playlist-paused' as const)
       .exhaustive()
+  }
+
+  export const updateQuietHours = async (
+    quietHours: QuietHours,
+    playlistId: PlaylistId = DEFAULT_PLAYLIST_ID,
+  ) => {
+    const playlist = await playlistRepository.findById(playlistId)
+    if (!playlist) return 'playlist-not-found' as const
+    await playlistRepository.save({ ...playlist, quietHours })
+    return playlistId
   }
 
   export const reconcileImages = async (

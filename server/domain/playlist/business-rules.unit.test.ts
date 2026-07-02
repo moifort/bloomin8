@@ -19,6 +19,19 @@ describe('pickRandomImageId', () => {
   test('throws when the array is empty', () => {
     expect(() => pickRandomImageId([])).toThrow()
   })
+
+  test('never picks the excluded id when others are available', () => {
+    const list = ids(['a', 'b', 'c'])
+    const excluded = list[0] as ImageId
+    for (let i = 0; i < 50; i++) {
+      expect(pickRandomImageId(list, excluded)).not.toBe(excluded)
+    }
+  })
+
+  test('ignores the exclusion when it is the only id left', () => {
+    const only = ids(['a'])[0] as ImageId
+    expect(pickRandomImageId([only], only)).toBe(only)
+  })
 })
 
 describe('applyQuietHours', () => {

@@ -2,7 +2,6 @@ import { GraphQLError } from 'graphql'
 import { ZodError } from 'zod'
 import { CanvasDate, Percentage } from '~/domain/canvas/primitives'
 import { CanvasUrl, ServerUrl } from '~/domain/config/primitives'
-import { ImageId, ImageUrl } from '~/domain/image/primitives'
 import { PlaylistId, Timezone } from '~/domain/playlist/primitives'
 import { Hour } from '~/domain/shared/primitives'
 import { builder } from './builder'
@@ -45,18 +44,6 @@ builder.scalarType('Timezone', {
   description: 'IANA timezone identifier (e.g. Europe/Paris)',
   serialize: (value) => value as string,
   parseValue: validatedParse('Timezone', Timezone),
-})
-
-builder.scalarType('ImageId', {
-  description: 'Image unique identifier (UUID v4)',
-  serialize: (value) => value as string,
-  parseValue: validatedParse('ImageId', ImageId),
-})
-
-builder.scalarType('ImageUrl', {
-  description: 'Server-relative path to an image file (must start with /)',
-  serialize: (value) => value as string,
-  parseValue: validatedParse('ImageUrl', ImageUrl),
 })
 
 builder.scalarType('CanvasUrl', {

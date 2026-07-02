@@ -23,16 +23,16 @@ export const PlaylistProgressType = builder
     }),
   })
 
-export type PlaylistResumePayload = { playlistId: PlaylistId; wokeUp: boolean }
+export type PlaylistWakeUpPayload = { playlistId: PlaylistId; wokeUp: boolean }
 
-export const PlaylistResumePayloadType = builder
-  .objectRef<PlaylistResumePayload>('PlaylistResumePayload')
+export const PlaylistWakeUpPayloadType = builder
+  .objectRef<PlaylistWakeUpPayload>('PlaylistWakeUpPayload')
   .implement({
-    description: 'Outcome of resuming a paused playlist',
+    description: 'Outcome of a playlist command that tries to wake the device (start, resume)',
     fields: (t) => ({
       playlistId: t.expose('playlistId', {
         type: 'PlaylistId',
-        description: 'Identifier of the resumed playlist',
+        description: 'Identifier of the affected playlist',
       }),
       wokeUp: t.exposeBoolean('wokeUp', {
         description:

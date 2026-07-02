@@ -32,9 +32,15 @@ export const applyQuietHours = (date: Date, quietHours?: QuietHours): Date => {
 export const computeDisplayed = (total: number, remaining: number): number =>
   Math.min(total, Math.max(0, total - remaining))
 
-export const pickRandomImageId = (availableImagesId: ImageId[]): ImageId => {
+// `exclude` avoids showing the same image twice in a row across a cycle refill;
+// it is ignored when it would leave nothing to pick from.
+export const pickRandomImageId = (availableImagesId: ImageId[], exclude?: ImageId): ImageId => {
   if (availableImagesId.length === 0) throw new Error('availableImagesId must not be empty')
-  if (availableImagesId.length === 1) return availableImagesId[0] as ImageId
-  const randomIndex = Math.floor(Math.random() * availableImagesId.length)
-  return availableImagesId[randomIndex] as ImageId
+  const candidates =
+    availableImagesId.length > 1
+      ? availableImagesId.filter((id) => id !== exclude)
+      : availableImagesId
+  if (candidates.length === 1) return candidates[0] as ImageId
+  const randomIndex = Math.floor(Math.random() * candidates.length)
+  return candidates[randomIndex] as ImageId
 }
