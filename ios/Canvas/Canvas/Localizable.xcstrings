@@ -120,12 +120,12 @@
         }
       }
     },
-    "Adresse du serveur bloomin8 sur votre réseau local (ex. http://192.168.0.165:3000)." : {
+    "Adresse du serveur bloomin8 sur votre réseau local (ex. http://192.168.1.199:3000)." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Address of the bloomin8 server on your local network (e.g. http://192.168.0.165:3000)."
+            "value" : "Address of the bloomin8 server on your local network (e.g. http://192.168.1.199:3000)."
           }
         }
       }

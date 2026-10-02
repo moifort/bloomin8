@@ -6,7 +6,7 @@ services:
     environment:
       HOST: 0.0.0.0
       PORT: "3000"
-      NITRO_SERVER_URL: http://192.168.0.165:3000
+      NITRO_SERVER_URL: http://192.168.1.199:3000
     ports:
       - "3000:3000"
     volumes:

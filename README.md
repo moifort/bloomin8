@@ -47,7 +47,7 @@ services:
       - ./data:/app/data
 ```
 
-> Replace `<YOUR_SERVER_IP>` with the local IP address of the machine running the server (e.g. `192.168.0.165`). The BLOOMIN8 device uses this URL to pull images, so it must be reachable on your network.
+> Replace `<YOUR_SERVER_IP>` with the local IP address of the machine running the server (e.g. `192.168.1.199`). The BLOOMIN8 device uses this URL to pull images, so it must be reachable on your network.
 
 Then start the server:
 
@@ -61,7 +61,7 @@ A ready-to-use CasaOS configuration is available in `docker-compose.casaos.yml`.
 
 ### iOS App
 
-Build and install the iOS app from `ios/Canvas/` using Xcode. On first launch, open the in-app settings screen ("Modifier les réglages") to point the server URL at your Canvas server (e.g. `http://192.168.0.165:3000`) — a "test connection" button checks it is reachable.
+Build and install the iOS app from `ios/Canvas/` using Xcode. On first launch, open the in-app settings screen ("Modifier les réglages") to point the server URL at your Canvas server (e.g. `http://192.168.1.199:3000`) — a "test connection" button checks it is reachable.
 
 ![iOS App](ios.PNG)
 

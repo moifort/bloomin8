@@ -13,7 +13,7 @@ private enum CanvasWidgetStore {
     static let playlistDisplayedKey = "canvas.playlist.displayed"
     static let playlistTotalKey = "canvas.playlist.total"
     static let nextPullDateKey = "canvas.playlist.next-pull-date"
-    static let defaultServerURL = "http://192.168.0.165:3000"
+    static let defaultServerURL = "http://192.168.1.199:3000"
 }
 
 private struct CanvasBatteryEntry: TimelineEntry {

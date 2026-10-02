@@ -103,9 +103,9 @@ server/
 ### Configuration
 
 `nitro.config.ts` runtime config:
-- `NITRO_SERVER_URL`: Public URL the device should call back (default: `http://192.168.0.164:3000`)
+- `NITRO_SERVER_URL`: Public URL the device should call back (default: `http://192.168.1.199:3000`)
 
-The iOS app has its own default server URL (`http://192.168.0.165:3000` in `CanvasSettings.swift`) — both point at whatever machine runs the server on your LAN and are editable in the app's settings screen.
+The iOS app has its own default server URL (`http://192.168.1.199:3000` in `CanvasSettings.swift`, device `http://192.168.1.182`) — both point at whatever machine runs the server on your LAN and are editable in the app's settings screen.
 
 ### BLOOMIN8 Device Protocol (REST, unchanged)
 

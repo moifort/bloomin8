@@ -54,7 +54,7 @@ struct SettingsView: View {
             } header: {
                 Text("Serveur")
             } footer: {
-                Text("Adresse du serveur bloomin8 sur votre réseau local (ex. http://192.168.0.165:3000).")
+                Text("Adresse du serveur bloomin8 sur votre réseau local (ex. http://192.168.1.199:3000).")
             }
 
             Section {

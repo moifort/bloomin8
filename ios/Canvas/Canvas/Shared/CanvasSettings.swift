@@ -7,8 +7,8 @@ enum CanvasSettings {
     static let appGroupSuiteName = "group.polyforms.canvas"
     static let serverURLKey = "canvas.server.url"
     static let deviceURLKey = "canvas.device.url"
-    static let defaultServerURL = "http://192.168.0.165:3000"
-    static let defaultDeviceURL = "http://192.168.0.174"
+    static let defaultServerURL = "http://192.168.1.199:3000"
+    static let defaultDeviceURL = "http://192.168.1.182"
 
     /// Mirrors the standard-defaults configuration into the App Group so the
     /// widget extension reads the same server URL as the app.

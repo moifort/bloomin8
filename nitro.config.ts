@@ -7,7 +7,7 @@ export default defineNitroConfig({
     },
   },
   runtimeConfig: {
-    serverUrl: 'http://192.168.0.164:3000',
+    serverUrl: 'http://192.168.1.199:3000',
   },
   storage: {
     images: {
