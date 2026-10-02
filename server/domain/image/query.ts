@@ -5,12 +5,11 @@ import type { ImageId as ImageIdType } from '~/domain/image/types'
 export namespace ImageQuery {
   export const findById = (id: ImageIdType) => imageRepository.findById(id)
 
-  export const findByName = async (name: string) => {
+  // `<id>_P.jpg` → JPEG bytes. A malformed id is a not-found, not a server error.
+  export const findFileByName = async (name: string) => {
     const [extractedId] = name.split('_')
-    if (!extractedId) return null
-    // A malformed id is a not-found, not a server error.
     try {
-      return await imageRepository.findById(ImageId(extractedId))
+      return await imageRepository.findFileById(ImageId(extractedId))
     } catch {
       return null
     }

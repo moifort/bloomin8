@@ -22,9 +22,28 @@ scalar DateTime
 """Cron interval in hours, integer in [1, 168]"""
 scalar Hour
 
+"""Image unique identifier (UUID v4), as returned by POST /upload"""
+scalar ImageId
+
 type Mutation {
   """Delete every uploaded image. Returns the count of deleted entries."""
   deleteAllImages: Int!
+
+  """
+  Delete the given images — used to roll back a cancelled upload. Unknown ids are ignored. Returns the count of deleted images.
+  """
+  deleteImages(
+    """Ids of the images to delete"""
+    ids: [ImageId!]!
+  ): Int!
+
+  """
+  Delete every image except the given ones — final step of an album replacement, once the new album is uploaded. Refused with NO_KEPT_IMAGE when none of the ids exists, so a failed upload can never wipe the album. Returns the count of deleted images.
+  """
+  keepOnlyImages(
+    """Ids of the images to keep, as returned by POST /upload"""
+    ids: [ImageId!]!
+  ): Int!
 
   """Pause an in-progress playlist so the device defers its next pull."""
   pausePlaylist: PlaylistId!
@@ -63,8 +82,18 @@ type PlaylistProgress {
   """Interval between two image displays, in hours"""
   cronIntervalInHours: Hour!
 
+  """
+  Server-relative path of the image currently on display (e.g. /images/<id>_P.jpg) — null before the first pull or once the image was deleted.
+  """
+  currentImagePath: String
+
   """Number of images already shown in the current cycle"""
   displayed: Int!
+
+  """
+  When the device is expected to pull next — null until its first pull. A date in the past means the device missed its wake-up.
+  """
+  nextPullDate: DateTime
 
   """Current playlist status"""
   status: PlaylistStatus!

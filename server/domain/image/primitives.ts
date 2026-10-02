@@ -19,12 +19,17 @@ export const ImageUrl = (value: unknown) => {
   return make<ImageUrlType>()(validatedValue)
 }
 
+// JPEG bytes. A string is the base64 form images were stored in before
+// `image-files` existed (only read back by the startup migration).
 export const ImageRaw = (value: unknown) => {
   const validatedValue = z.union([z.string(), z.instanceof(Buffer)]).parse(value)
-  const normalizedRaw =
-    validatedValue instanceof Buffer ? validatedValue.toString('base64') : validatedValue
-  const nonEmptyRaw = z.string().min(1).parse(normalizedRaw)
-  return make<ImageRawType>()(nonEmptyRaw)
+  const bytes =
+    typeof validatedValue === 'string' ? Buffer.from(validatedValue, 'base64') : validatedValue
+  const nonEmptyBytes = z
+    .instanceof(Buffer)
+    .refine((buffer) => buffer.length > 0, { message: 'Image must not be empty' })
+    .parse(bytes)
+  return make<ImageRawType>()(nonEmptyBytes)
 }
 
 export const ImageOrientation = (value: unknown) => {

@@ -2,8 +2,11 @@ import { match } from 'ts-pattern'
 import { CanvasCommand } from '~/domain/canvas/command'
 import type { CanvasUrl, ServerUrl } from '~/domain/config/types'
 import * as imageRepository from '~/domain/image/infrastructure/repository'
-import type { Image, ImageId } from '~/domain/image/types'
-import { applyQuietHours, pickRandomImageId } from '~/domain/playlist/business-rules'
+import {
+  applyQuietHours,
+  pickNextImage,
+  shownFromRemaining,
+} from '~/domain/playlist/business-rules'
 import * as playlistRepository from '~/domain/playlist/infrastructure/repository'
 import { DEFAULT_PLAYLIST_ID } from '~/domain/playlist/primitives'
 import type { PlaylistId, QuietHours } from '~/domain/playlist/types'
@@ -20,15 +23,17 @@ export namespace PlaylistCommand {
     quietHours?: QuietHours,
     playlistId: PlaylistId = DEFAULT_PLAYLIST_ID,
   ) => {
-    const availableImagesId = await imageRepository.findAllIds()
-    if (availableImagesId.length === 0) return 'playlist-empty' as const
+    const allImagesId = await imageRepository.findAllIds()
+    if (allImagesId.length === 0) return 'playlist-empty' as const
     await playlistRepository.save({
       id: playlistId,
       status: 'in-progress',
       canvasUrl,
       cronIntervalInHours,
-      availableImagesId,
+      shownImagesId: [],
       quietHours,
+      // The device pulls right away when woken; until then nothing is scheduled.
+      nextPullAt: undefined,
     })
     let wokeUp = false
     try {
@@ -50,48 +55,58 @@ export namespace PlaylistCommand {
     return playlistId
   }
 
+  // Answers a device pull: the image to show (if any) and when to pull next.
+  // The next pull time is stored so the app can show it and detect a device
+  // that missed its wake-up.
   export const nextImage = async (playlistId: PlaylistId = DEFAULT_PLAYLIST_ID) => {
     const playlist = await playlistRepository.findById(playlistId)
     if (!playlist) return 'playlist-not-found' as const
-    const { availableImagesId, status, cronIntervalInHours, quietHours } = playlist
+    const { shownImagesId, lastImageId, status, cronIntervalInHours, quietHours } = playlist
+    const nextPullAt = applyQuietHours(
+      new Date(Date.now() + cronIntervalInHours * 60 * 60 * 1000),
+      quietHours,
+    )
 
-    return match(status)
+    const outcome = await match(status)
       .with('in-progress', async () => {
-        // Self-healing pick: ids whose image was deleted since playlist start are
-        // dropped from the pool instead of blocking the device forever.
-        let candidates = availableImagesId
-        let refilled = candidates.length === 0
-        if (refilled) candidates = await imageRepository.findAllIds()
-        while (true) {
-          if (candidates.length === 0) {
-            if (refilled) return 'playlist-empty' as const
-            candidates = await imageRepository.findAllIds()
-            refilled = true
-            continue
-          }
-          const nextImageId = pickRandomImageId(
-            candidates,
-            refilled ? playlist.lastImageId : undefined,
-          )
-          candidates = candidates.filter((id) => id !== nextImageId)
-          const nextImage: Image | null = await imageRepository.findById(nextImageId)
-          if (!nextImage) continue
-          await playlistRepository.save({
-            ...playlist,
-            availableImagesId: candidates,
-            lastImageId: nextImageId,
-          })
-          return {
-            nextImage,
-            displayedAt: applyQuietHours(
-              new Date(Date.now() + cronIntervalInHours * 60 * 60 * 1000),
-              quietHours,
-            ),
-          }
-        }
+        const picked = pickNextImage({
+          allImagesId: await imageRepository.findAllIds(),
+          shownImagesId,
+          lastImageId,
+        })
+        if (!picked) return { kind: 'empty' as const }
+        // Null only if the image was deleted between listing and reading.
+        const image = await imageRepository.findById(picked.nextImageId)
+        if (!image) return { kind: 'empty' as const }
+        return { kind: 'show' as const, image, shownImagesId: picked.shownImagesId }
       })
-      .with('paused', () => 'playlist-paused' as const)
+      .with('paused', () => ({ kind: 'paused' as const }))
       .exhaustive()
+
+    if (outcome.kind === 'show') {
+      await playlistRepository.save({
+        ...playlist,
+        shownImagesId: outcome.shownImagesId,
+        lastImageId: outcome.image.id,
+        nextPullAt,
+      })
+      return { kind: 'show' as const, image: outcome.image, nextPullAt }
+    }
+    await playlistRepository.save({ ...playlist, nextPullAt })
+    return { kind: outcome.kind, nextPullAt }
+  }
+
+  // One-shot upgrade of a playlist stored with the legacy remaining-ids list.
+  export const migrateLegacyCycle = async (playlistId: PlaylistId = DEFAULT_PLAYLIST_ID) => {
+    const remaining = await playlistRepository.findLegacyRemainingImagesId(playlistId)
+    const playlist = remaining && (await playlistRepository.findById(playlistId))
+    if (!remaining || !playlist) return false
+    const allImagesId = await imageRepository.findAllIds()
+    await playlistRepository.save({
+      ...playlist,
+      shownImagesId: shownFromRemaining(allImagesId, remaining),
+    })
+    return true
   }
 
   export const updateQuietHours = async (
@@ -102,19 +117,6 @@ export namespace PlaylistCommand {
     if (!playlist) return 'playlist-not-found' as const
     await playlistRepository.save({ ...playlist, quietHours })
     return playlistId
-  }
-
-  export const reconcileImages = async (
-    validImagesId: ImageId[],
-    playlistId: PlaylistId = DEFAULT_PLAYLIST_ID,
-  ) => {
-    const playlist = await playlistRepository.findById(playlistId)
-    if (!playlist) return
-    const valid = new Set<ImageId>(validImagesId)
-    await playlistRepository.save({
-      ...playlist,
-      availableImagesId: playlist.availableImagesId.filter((id) => valid.has(id)),
-    })
   }
 
   export const pause = async (playlistId: PlaylistId = DEFAULT_PLAYLIST_ID) => {

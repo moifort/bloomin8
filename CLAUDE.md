@@ -89,13 +89,14 @@ server/
 
 - **Endpoint**: `POST /graphql` for operations, `GET /graphql` for Apollo Sandbox in dev.
 - **Schema**: code-first with Pothos. `defaultFieldNullability: false` — every field is `!` unless explicitly marked `nullable: true`.
-- **Custom scalars**: every branded type exposed in the schema has a Pothos scalar (Hour, Percentage, PlaylistId, Timezone, CanvasUrl, ServerUrl, CanvasDate) wired to its Zod constructor via `validatedParse`. Errors surface as `GraphQLError(BAD_USER_INPUT)`. Branded types used only by REST/storage (ImageId, ImageUrl) have no scalar.
+- **Custom scalars**: every branded type exposed in the schema has a Pothos scalar (Hour, Percentage, PlaylistId, Timezone, CanvasUrl, ServerUrl, CanvasDate, ImageId) wired to its Zod constructor via `validatedParse`. Errors surface as `GraphQLError(BAD_USER_INPUT)`. Branded types used only by REST/storage (ImageUrl, ImageRaw) have no scalar.
 - **SDL export**: committed to `shared/schema.graphql`. Regenerate via `bun run generate:graphql`. Excluded from biome formatting (Pothos owns its canonical formatting).
 - **Tree-shaking**: `nitro.config.ts` whitelists `/graphql/` paths in `rollupConfig.treeshake.moduleSideEffects` — without it Rollup elides the side-effect imports of query/mutation files, leaving Apollo with an empty schema.
 
-### Storage Buckets (unchanged)
+### Storage Buckets
 
-- `images`: `./data/images` — `<id>_P.jpg` / `<id>_L.jpg`
+- `images`: `./data/images` — image metadata JSON (id, orientation, url), keyed by id
+- `image-files`: `./data/image-files` — raw JPEG bytes, `<id>.jpg` (served by `/images/<id>_P.jpg`)
 - `playlist`: `./data/playlist` — playlist state (single hardcoded `DEFAULT_PLAYLIST_ID`)
 - `canvas`: `./data/canvas` — last battery report (`battery` key)
 
@@ -118,7 +119,7 @@ The `canvas-battery` middleware captures `?battery=X` on `/eink_pull` and persis
 
 ### Data Flow
 
-1. iOS app uploads photos → REST `POST /upload` → stored in `./data/images`.
+1. iOS app uploads the album → REST `POST /upload` (one call per photo, returns the image id) while the device keeps showing the old album, then `mutation keepOnlyImages(ids)` drops the old photos (`deleteImages(ids)` rolls back a cancelled upload).
 2. iOS app starts playlist → GraphQL `mutation startPlaylist` → wakes device.
 3. Device periodically pulls REST `GET /eink_pull` → server picks the next image, returns URL + schedule.
 4. Device's `?battery=X` query param is captured by middleware → persisted in `canvas` bucket.
@@ -142,13 +143,13 @@ ios/
     ├── Canvas/
     │   ├── Features/
     │   │   ├── Playlist/GraphQL/             # 6 .graphql operations (incl. UpdateQuietHours)
-    │   │   ├── Images/GraphQL/               # DeleteAllImages
+    │   │   ├── Images/GraphQL/               # KeepOnlyImages, DeleteImages
     │   │   ├── Canvas/GraphQL/               # CanvasBattery
     │   │   └── System/GraphQL/               # Health (settings "test connection")
     │   ├── Shared/GraphQLClient.swift        # ApolloClient factory + async bridges
     │   ├── Shared/CanvasSettings.swift       # URL defaults, validation, App Group sync
     │   ├── PlaylistService.swift             # Wraps Start/Pause/Resume/Progress/QuietHours
-    │   ├── ImageService.swift                # Wraps DeleteAllImages
+    │   ├── ImageService.swift                # Wraps KeepOnlyImages / DeleteImages
     │   ├── CanvasStatusService.swift         # Wraps CanvasBattery query
     │   ├── UploadService.swift               # REST POST /upload (raw JPEG)
     │   ├── SettingsView.swift                # In-app server/device URL editor + health test

@@ -2,6 +2,7 @@ import { GraphQLError } from 'graphql'
 import { ZodError } from 'zod'
 import { CanvasDate, Percentage } from '~/domain/canvas/primitives'
 import { CanvasUrl, ServerUrl } from '~/domain/config/primitives'
+import { ImageId } from '~/domain/image/primitives'
 import { PlaylistId, Timezone } from '~/domain/playlist/primitives'
 import { Hour } from '~/domain/shared/primitives'
 import { builder } from './builder'
@@ -62,4 +63,10 @@ builder.scalarType('CanvasDate', {
   description: 'ISO 8601 UTC date-time normalized without milliseconds',
   serialize: (value) => value as string,
   parseValue: validatedParse('CanvasDate', CanvasDate),
+})
+
+builder.scalarType('ImageId', {
+  description: 'Image unique identifier (UUID v4), as returned by POST /upload',
+  serialize: (value) => value as string,
+  parseValue: validatedParse('ImageId', ImageId),
 })

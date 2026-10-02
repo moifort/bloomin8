@@ -14,12 +14,21 @@ export const PlaylistId = (value: unknown) => {
   return make<PlaylistIdType>()(validatedValue)
 }
 
+const isSupportedTimezone = (value: string) => {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value })
+    return true
+  } catch {
+    return false
+  }
+}
+
 export const Timezone = (value: unknown) => {
+  // `Intl.supportedValuesOf` only lists canonical ids and rejects valid aliases
+  // that iOS offers (Europe/Kyiv, Asia/Kathmandu, GMT…). Let Intl resolve it.
   const validatedValue = z
     .string()
-    .refine((v) => Intl.supportedValuesOf('timeZone').includes(v), {
-      message: 'Invalid IANA timezone identifier',
-    })
+    .refine(isSupportedTimezone, { message: 'Invalid IANA timezone identifier' })
     .parse(value)
   return make<TimezoneType>()(validatedValue)
 }

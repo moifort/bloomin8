@@ -1,6 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 import type { ImageId } from '~/domain/image/types'
-import { applyQuietHours, computeDisplayed, pickRandomImageId } from './business-rules'
+import {
+  applyQuietHours,
+  countDisplayed,
+  pickNextImage,
+  pickRandomImageId,
+  shownFromRemaining,
+} from './business-rules'
 import { QuietHourEnd, QuietHourStart, Timezone } from './primitives'
 
 const ids = (values: string[]) => values as unknown as ImageId[]
@@ -132,20 +138,79 @@ describe('applyQuietHours', () => {
   })
 })
 
-describe('computeDisplayed', () => {
-  test('returns the number of already displayed images', () => {
-    expect(computeDisplayed(10, 4)).toBe(6)
+describe('countDisplayed', () => {
+  test('counts the shown images that still exist', () => {
+    expect(countDisplayed(ids(['a', 'b', 'c', 'd']), ids(['a', 'b']))).toBe(2)
   })
 
-  test('clamps to zero when remaining exceeds total (images deleted mid-cycle)', () => {
-    expect(computeDisplayed(4, 10)).toBe(0)
+  test('ignores shown ids whose image was deleted', () => {
+    expect(countDisplayed(ids(['a', 'b']), ids(['a', 'x', 'y']))).toBe(1)
   })
 
-  test('caps at total when nothing remains', () => {
-    expect(computeDisplayed(5, 0)).toBe(5)
+  test('does not count fresh uploads as displayed', () => {
+    // Regression: the former `total - remaining` formula reported 3/3 here.
+    expect(countDisplayed(ids(['n1', 'n2', 'n3']), [])).toBe(0)
   })
 
   test('returns zero when there are no images', () => {
-    expect(computeDisplayed(0, 0)).toBe(0)
+    expect(countDisplayed([], ids(['a']))).toBe(0)
+  })
+})
+
+describe('pickNextImage', () => {
+  test('returns null when there is no image', () => {
+    expect(pickNextImage({ allImagesId: [], shownImagesId: ids(['a']) })).toBeNull()
+  })
+
+  test('picks among the images not shown yet and records it', () => {
+    for (let i = 0; i < 20; i++) {
+      const result = pickNextImage({ allImagesId: ids(['a', 'b', 'c']), shownImagesId: ids(['a']) })
+      expect(['b', 'c']).toContain(result?.nextImageId as string)
+      expect(result?.shownImagesId).toEqual(ids(['a', result?.nextImageId as string]))
+    }
+  })
+
+  test('lets an image uploaded mid-cycle join the current cycle', () => {
+    const result = pickNextImage({ allImagesId: ids(['a', 'new']), shownImagesId: ids(['a']) })
+    expect(result?.nextImageId).toBe('new' as ImageId)
+  })
+
+  test('drops deleted ids from the shown list', () => {
+    const result = pickNextImage({
+      allImagesId: ids(['a', 'b']),
+      shownImagesId: ids(['a', 'gone']),
+    })
+    expect(result).toEqual({ nextImageId: 'b' as ImageId, shownImagesId: ids(['a', 'b']) })
+  })
+
+  test('starts a new cycle without repeating the last image', () => {
+    for (let i = 0; i < 20; i++) {
+      const result = pickNextImage({
+        allImagesId: ids(['a', 'b', 'c']),
+        shownImagesId: ids(['a', 'b', 'c']),
+        lastImageId: 'c' as ImageId,
+      })
+      expect(result?.nextImageId).not.toBe('c' as ImageId)
+      expect(result?.shownImagesId).toEqual([result?.nextImageId as ImageId])
+    }
+  })
+
+  test('repeats the only image when it is alone', () => {
+    const result = pickNextImage({
+      allImagesId: ids(['a']),
+      shownImagesId: ids(['a']),
+      lastImageId: 'a' as ImageId,
+    })
+    expect(result).toEqual({ nextImageId: 'a' as ImageId, shownImagesId: ids(['a']) })
+  })
+})
+
+describe('shownFromRemaining', () => {
+  test('keeps the cycle position of a legacy playlist', () => {
+    expect(shownFromRemaining(ids(['a', 'b', 'c', 'd']), ids(['c', 'd']))).toEqual(ids(['a', 'b']))
+  })
+
+  test('ignores remaining ids whose image no longer exists', () => {
+    expect(shownFromRemaining(ids(['a', 'b']), ids(['b', 'gone']))).toEqual(ids(['a']))
   })
 })

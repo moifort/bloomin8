@@ -20,6 +20,17 @@ export const PlaylistProgressType = builder
         type: 'Hour',
         description: 'Interval between two image displays, in hours',
       }),
+      nextPullDate: t.expose('nextPullDate', {
+        type: 'DateTime',
+        nullable: true,
+        description:
+          'When the device is expected to pull next — null until its first pull. A date in the past means the device missed its wake-up.',
+      }),
+      currentImagePath: t.exposeString('currentImagePath', {
+        nullable: true,
+        description:
+          'Server-relative path of the image currently on display (e.g. /images/<id>_P.jpg) — null before the first pull or once the image was deleted.',
+      }),
     }),
   })
 

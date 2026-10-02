@@ -22,7 +22,11 @@ export type Playlist = {
   status: PlaylistStatus
   canvasUrl: CanvasUrl
   cronIntervalInHours: Hour
-  availableImagesId: ImageId[]
+  // Images already displayed in the current cycle. Storing the shown ids (rather
+  // than the remaining ones) lets new uploads join the cycle automatically.
+  shownImagesId: ImageId[]
   quietHours?: QuietHours
   lastImageId?: ImageId
+  // When the device is expected to pull next, as last told by /eink_pull.
+  nextPullAt?: Date
 }

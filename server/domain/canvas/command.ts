@@ -5,10 +5,15 @@ import type { Percentage } from '~/domain/canvas/types'
 import type { CanvasUrl, ServerUrl } from '~/domain/config/types'
 import type { ImageUrl } from '~/domain/image/types'
 
+// A sleeping e-ink device never answers: without a bound, the TCP connect
+// hangs for minutes and the GraphQL mutation waiting on it times out client-side.
+const WAKE_UP_TIMEOUT_MS = 5_000
+
 export namespace CanvasCommand {
   export const wakeUp = async (canvasUrl: CanvasUrl, serverUrl: ServerUrl) => {
     const response = await fetch(`${canvasUrl}/upstream/pull_settings`, {
       method: 'PUT',
+      signal: AbortSignal.timeout(WAKE_UP_TIMEOUT_MS),
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         upstream_on: true,
@@ -49,11 +54,9 @@ export namespace CanvasCommand {
     data: { next_cron_time: null },
   })
 
-  export const deferPullResponse = (hours = 24) => ({
+  export const deferPullResponse = (nextCronTime: Date, message: string) => ({
     status: 204,
-    message: 'Playlist paused',
-    data: {
-      next_cron_time: CanvasDate(new Date(Date.now() + hours * 60 * 60 * 1000)),
-    },
+    message,
+    data: { next_cron_time: CanvasDate(nextCronTime) },
   })
 }

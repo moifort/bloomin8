@@ -3,6 +3,7 @@ import { GraphQLScalarType } from 'graphql'
 import type { H3Event } from 'h3'
 import type { CanvasDate, Percentage } from '~/domain/canvas/types'
 import type { CanvasUrl, ServerUrl } from '~/domain/config/types'
+import type { ImageId } from '~/domain/image/types'
 import type { PlaylistId, Timezone } from '~/domain/playlist/types'
 import type { Hour } from '~/domain/shared/types'
 import type { Loaders } from './loaders'
@@ -31,6 +32,7 @@ export const builder = new SchemaBuilder<{
     CanvasUrl: { Input: CanvasUrl; Output: CanvasUrl }
     ServerUrl: { Input: ServerUrl; Output: ServerUrl }
     CanvasDate: { Input: CanvasDate; Output: CanvasDate }
+    ImageId: { Input: ImageId; Output: ImageId }
   }
 }>({ defaultFieldNullability: false })
 

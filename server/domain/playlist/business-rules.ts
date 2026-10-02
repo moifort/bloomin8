@@ -29,8 +29,39 @@ export const applyQuietHours = (date: Date, quietHours?: QuietHours): Date => {
   return new Date(date.getTime() + msUntilEnd)
 }
 
-export const computeDisplayed = (total: number, remaining: number): number =>
-  Math.min(total, Math.max(0, total - remaining))
+// Only ids of images that still exist count: deleted images drop out of the
+// cycle, fresh uploads join it as not-yet-shown.
+export const countDisplayed = (allImagesId: ImageId[], shownImagesId: ImageId[]): number => {
+  const shown = new Set(shownImagesId)
+  return allImagesId.filter((id) => shown.has(id)).length
+}
+
+// Converts the pre-`shownImagesId` storage (ids still to show) into the shown
+// ids, so a server upgrade keeps the current cycle where it was.
+export const shownFromRemaining = (allImagesId: ImageId[], remainingImagesId: ImageId[]) => {
+  const remaining = new Set(remainingImagesId)
+  return allImagesId.filter((id) => !remaining.has(id))
+}
+
+// Picks the next image of the current cycle. Once every existing image has been
+// shown, a new cycle starts without repeating the last displayed image.
+// Returns null when there is no image at all.
+export const pickNextImage = (input: {
+  allImagesId: ImageId[]
+  shownImagesId: ImageId[]
+  lastImageId?: ImageId
+}): { nextImageId: ImageId; shownImagesId: ImageId[] } | null => {
+  const { allImagesId, lastImageId } = input
+  if (allImagesId.length === 0) return null
+  const shown = new Set(input.shownImagesId)
+  const stillShown = allImagesId.filter((id) => shown.has(id))
+  const remaining = allImagesId.filter((id) => !shown.has(id))
+  const isNewCycle = remaining.length === 0
+  const nextImageId = isNewCycle
+    ? pickRandomImageId(allImagesId, lastImageId)
+    : pickRandomImageId(remaining)
+  return { nextImageId, shownImagesId: [...(isNewCycle ? [] : stillShown), nextImageId] }
+}
 
 // `exclude` avoids showing the same image twice in a row across a cycle refill;
 // it is ignored when it would leave nothing to pick from.

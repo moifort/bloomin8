@@ -33,8 +33,15 @@ describe('Timezone', () => {
     expect(Timezone('Europe/Paris')).toBe('Europe/Paris' as never)
   })
 
+  test('accepts non-canonical aliases offered by iOS', () => {
+    for (const alias of ['Europe/Kyiv', 'Asia/Kathmandu', 'Asia/Ho_Chi_Minh', 'GMT']) {
+      expect(Timezone(alias)).toBe(alias as never)
+    }
+  })
+
   test('rejects unknown timezones', () => {
     expect(() => Timezone('Mars/Phobos')).toThrow()
+    expect(() => Timezone('')).toThrow()
   })
 })
 

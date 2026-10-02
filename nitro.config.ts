@@ -14,6 +14,10 @@ export default defineNitroConfig({
       driver: 'fs',
       base: './data/images',
     },
+    'image-files': {
+      driver: 'fs',
+      base: './data/image-files',
+    },
     playlist: {
       driver: 'fs',
       base: './data/playlist',

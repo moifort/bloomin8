@@ -30,17 +30,19 @@ describe('ImageUrl', () => {
 })
 
 describe('ImageRaw', () => {
-  test('accepts a non-empty string', () => {
-    expect(ImageRaw('abc')).toBe('abc' as never)
+  test('keeps a Buffer as-is', () => {
+    const bytes = Buffer.from('hello')
+    expect(ImageRaw(bytes)).toBe(bytes as never)
   })
 
-  test('encodes a Buffer to base64', () => {
-    const result = ImageRaw(Buffer.from('hello'))
-    expect(result).toBe(Buffer.from('hello').toString('base64') as never)
+  test('decodes the legacy base64 string form', () => {
+    const legacy = Buffer.from('hello').toString('base64')
+    expect(ImageRaw(legacy).equals(Buffer.from('hello'))).toBe(true)
   })
 
-  test('rejects empty strings', () => {
+  test('rejects empty input', () => {
     expect(() => ImageRaw('')).toThrow()
+    expect(() => ImageRaw(Buffer.alloc(0))).toThrow()
   })
 })
 
