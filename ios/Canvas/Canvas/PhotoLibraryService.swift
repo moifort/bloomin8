@@ -3,13 +3,6 @@ import Photos
 import UIKit
 
 enum PhotoLibraryService {
-    private static func uploadFetchTargetSize(for asset: PHAsset) -> CGSize {
-        let isLandscape = asset.pixelWidth > asset.pixelHeight
-        return isLandscape
-            ? CGSize(width: 1600, height: 1200)
-            : CGSize(width: 1200, height: 1600)
-    }
-
     enum FetchImageError: LocalizedError {
         case cancelled
         case invalidData
@@ -110,8 +103,10 @@ enum PhotoLibraryService {
 
             PHImageManager.default().requestImage(
                 for: asset,
-                targetSize: uploadFetchTargetSize(for: asset),
-                contentMode: .aspectFit,
+                // aspectFill guarantees both sides cover the panel: a landscape
+                // photo comes back 1600 px tall, so the center crop never upscales.
+                targetSize: ImageProcessor.targetSize,
+                contentMode: .aspectFill,
                 options: options
             ) { image, info in
                 if let cancelled = info?[PHImageCancelledKey] as? Bool, cancelled {

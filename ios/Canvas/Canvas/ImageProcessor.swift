@@ -13,31 +13,17 @@ struct ProcessedImage: Sendable {
 enum ImageProcessor {
     static let targetSize = CGSize(width: 1200, height: 1600)
 
+    /// Aspect-fills the photo into the portrait panel: landscape photos are
+    /// center-cropped, so the stored pixels are always portrait. They must
+    /// therefore be sent as `_P` — `_L` tells the device to rotate them 90°.
     static func processForUpload(
         _ image: UIImage,
         compressionQuality: CGFloat = 0.88
     ) -> ProcessedImage? {
-        guard image.size.width > 0, image.size.height > 0 else {
+        guard let jpegData = renderAspectFillJPEG(image, compressionQuality: compressionQuality) else {
             return nil
         }
-
-        let normalizedImage = normalizeOrientation(image)
-        let orientation: UploadOrientation =
-            normalizedImage.size.width > normalizedImage.size.height ? .landscape : .portrait
-        
-        // Pour les images paysage, on les crop au centre en mode portrait
-        // au lieu de les faire pivoter
-        let imageForRendering =
-            orientation == .landscape ? centerCropToPortrait(normalizedImage) : normalizedImage
-
-        guard let jpegData = renderAspectFillJPEG(
-            imageForRendering,
-            compressionQuality: compressionQuality
-        ) else {
-            return nil
-        }
-
-        return ProcessedImage(jpegData: jpegData, orientation: orientation)
+        return ProcessedImage(jpegData: jpegData, orientation: .portrait)
     }
 
     private static func renderAspectFillJPEG(
@@ -78,54 +64,5 @@ enum ImageProcessor {
         }
 
         return output.jpegData(compressionQuality: compressionQuality)
-    }
-
-    private static func normalizeOrientation(_ image: UIImage) -> UIImage {
-        if image.imageOrientation == .up {
-            return image
-        }
-
-        let rendererFormat = UIGraphicsImageRendererFormat.default()
-        rendererFormat.scale = 1
-        rendererFormat.opaque = true
-        rendererFormat.preferredRange = .standard
-
-        let renderer = UIGraphicsImageRenderer(size: image.size, format: rendererFormat)
-        return renderer.image { _ in
-            image.draw(in: CGRect(origin: .zero, size: image.size))
-        }
-    }
-
-    private static func centerCropToPortrait(_ image: UIImage) -> UIImage {
-        // L'image est en mode paysage (largeur > hauteur)
-        // On veut la cropper au centre pour obtenir un format portrait
-        
-        let sourceSize = image.size
-        let targetAspectRatio = targetSize.width / targetSize.height // 1200/1600 = 0.75
-        
-        // Calculer la nouvelle largeur pour obtenir le bon ratio portrait
-        let croppedWidth = sourceSize.height * targetAspectRatio
-        
-        // Centrer le crop horizontalement
-        let cropX = (sourceSize.width - croppedWidth) / 2
-        
-        guard let cgImage = image.cgImage else {
-            return image
-        }
-        
-        // Convertir en coordonnées de pixel
-        let scale = CGFloat(cgImage.width) / sourceSize.width
-        let pixelCropRect = CGRect(
-            x: cropX * scale,
-            y: 0,
-            width: croppedWidth * scale,
-            height: sourceSize.height * scale
-        ).integral
-        
-        guard let croppedCGImage = cgImage.cropping(to: pixelCropRect) else {
-            return image
-        }
-        
-        return UIImage(cgImage: croppedCGImage, scale: 1, orientation: .up)
     }
 }

@@ -5,6 +5,9 @@ import WidgetKit
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     let onSave: () -> Void
+    // The server keeps the device URL given at playlist start and has no way to
+    // change it yet: editing it here would silently do nothing.
+    let isDeviceURLLocked: Bool
 
     @State private var serverURL: String
     @State private var deviceURL: String
@@ -17,7 +20,8 @@ struct SettingsView: View {
         case failure(String)
     }
 
-    init(onSave: @escaping () -> Void) {
+    init(isDeviceURLLocked: Bool = false, onSave: @escaping () -> Void) {
+        self.isDeviceURLLocked = isDeviceURLLocked
         self.onSave = onSave
         let defaults = UserDefaults.standard
         _serverURL = State(initialValue: defaults.string(forKey: CanvasSettings.serverURLKey) ?? CanvasSettings.defaultServerURL)
@@ -54,11 +58,22 @@ struct SettingsView: View {
             }
 
             Section {
-                urlField("URL du Canvas", text: $deviceURL, isValid: isDeviceURLValid)
+                if isDeviceURLLocked {
+                    Text(deviceURL)
+                        .font(.callout.monospaced())
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                } else {
+                    urlField("URL du Canvas", text: $deviceURL, isValid: isDeviceURLValid)
+                }
             } header: {
                 Text("BLOOMIN8")
             } footer: {
-                Text("Adresse du Canvas e-ink, utilisée pour le réveiller au lancement de la playlist.")
+                if isDeviceURLLocked {
+                    Text("Adresse utilisée par la playlist en cours. Elle n'est pas modifiable pour l'instant.")
+                } else {
+                    Text("Adresse du Canvas e-ink, utilisée pour le réveiller au lancement de la playlist.")
+                }
             }
         }
         .navigationTitle("Réglages")

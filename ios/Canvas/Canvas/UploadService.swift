@@ -43,6 +43,7 @@ struct UploadService {
         self.session = session
     }
 
+    /// Returns the id of the stored image.
     func uploadJPEG(_ jpegData: Data, orientation: String = "P") async throws -> String {
         guard var components = URLComponents(
             url: baseURL.appendingPathComponent("upload"),
@@ -77,10 +78,10 @@ struct UploadService {
 
         if (200 ..< 300).contains(http.statusCode) {
             let envelope = try? JSONDecoder().decode(ResponseEnvelope.self, from: data)
-            guard let url = envelope?.data?.url else {
+            guard let id = envelope?.data?.id else {
                 throw UploadError.invalidPayload
             }
-            return url
+            return id
         }
 
         let decodedMessage = (try? JSONDecoder().decode(ResponseEnvelope.self, from: data))?.message

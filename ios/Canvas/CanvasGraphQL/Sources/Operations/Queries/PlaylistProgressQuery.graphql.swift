@@ -7,7 +7,7 @@ public class PlaylistProgressQuery: GraphQLQuery {
   public static let operationName: String = "PlaylistProgress"
   public static let operationDocument: ApolloAPI.OperationDocument = .init(
     definition: .init(
-      #"query PlaylistProgress { playlistProgress { __typename displayed total status cronIntervalInHours } }"#
+      #"query PlaylistProgress { playlistProgress { __typename displayed total status cronIntervalInHours nextPullDate currentImagePath } }"#
     ))
 
   public init() {}
@@ -38,6 +38,8 @@ public class PlaylistProgressQuery: GraphQLQuery {
         .field("total", Int.self),
         .field("status", GraphQLEnum<CanvasGraphQL.PlaylistStatus>.self),
         .field("cronIntervalInHours", CanvasGraphQL.Hour.self),
+        .field("nextPullDate", CanvasGraphQL.DateTime?.self),
+        .field("currentImagePath", String?.self),
       ] }
 
       /// Number of images already shown in the current cycle
@@ -48,6 +50,10 @@ public class PlaylistProgressQuery: GraphQLQuery {
       public var status: GraphQLEnum<CanvasGraphQL.PlaylistStatus> { __data["status"] }
       /// Interval between two image displays, in hours
       public var cronIntervalInHours: CanvasGraphQL.Hour { __data["cronIntervalInHours"] }
+      /// When the device is expected to pull next — null until its first pull. A date in the past means the device missed its wake-up.
+      public var nextPullDate: CanvasGraphQL.DateTime? { __data["nextPullDate"] }
+      /// Server-relative path of the image currently on display (e.g. /images/<id>_P.jpg) — null before the first pull or once the image was deleted.
+      public var currentImagePath: String? { __data["currentImagePath"] }
     }
   }
 }

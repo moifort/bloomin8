@@ -5,15 +5,56 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var showingError = false
     @State private var showingUploadConfirmation = false
+    @State private var toastMessage: String?
+
+    private static let intervalPresets = [1, 2, 3, 4, 6, 8, 12, 24, 48, 72, 168]
 
     var body: some View {
+        mainContent
+            .task {
+                await viewModel.bootstrap()
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                guard newPhase == .active else { return }
+                Task {
+                    await viewModel.refreshCanvasBattery()
+                    viewModel.reloadAlbums()
+                }
+            }
+            .alert("Erreur", isPresented: $showingError, presenting: viewModel.errorText) { _ in
+                Button("OK", role: .cancel) {
+                    viewModel.clearError()
+                }
+            } message: { error in
+                Text(error)
+            }
+            .onChange(of: viewModel.errorText) { _, newError in
+                showingError = newError != nil
+            }
+            .modifier(StatusToastBehavior(viewModel: viewModel, toastMessage: $toastMessage))
+            .sensoryFeedback(trigger: viewModel.uploadCompletionCount) { _, _ in
+                viewModel.lastUploadOutcome == .failure ? .error : .success
+            }
+            .sensoryFeedback(.success, trigger: viewModel.playlistActionCount)
+    }
+
+    private var mainContent: some View {
         NavigationStack {
             Form {
-                configurationSection
+                if !viewModel.isServerReachable {
+                    unreachableSection
+                }
+                playlistSection
                 quietHoursSection
-                batterySection
+                canvasSection
                 photoSection
+                configurationSection
             }
+            .navigationTitle("Canvas")
+            .safeAreaInset(edge: .bottom) {
+                toast
+            }
+            .animation(.snappy, value: toastMessage)
             .refreshable {
                 await viewModel.refreshCanvasBattery()
                 viewModel.reloadAlbums()
@@ -32,30 +73,161 @@ struct ContentView: View {
                 }
             }
         }
-        .task {
-            await viewModel.bootstrap()
+    }
+
+    @ViewBuilder
+    private var toast: some View {
+        if let toastMessage {
+            Text(toastMessage)
+                .font(.footnote)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .glassEffect()
+                .padding(.bottom, 8)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .onTapGesture { self.toastMessage = nil }
         }
-        .onChange(of: scenePhase) { _, newPhase in
-            guard newPhase == .active else { return }
-            Task {
-                await viewModel.refreshCanvasBattery()
-                viewModel.reloadAlbums()
+    }
+
+    private func formattedInterval(_ hours: Int) -> String {
+        Duration.seconds(hours * 3600).formatted(.units(allowed: [.days, .hours], width: .abbreviated))
+    }
+
+    private var intervalChoices: [Int] {
+        Set(Self.intervalPresets + [viewModel.cronIntervalInHours]).sorted()
+    }
+
+    private var unreachableSection: some View {
+        Section {
+            HStack {
+                Label("Serveur injoignable", systemImage: "wifi.exclamationmark")
+                    .foregroundStyle(.orange)
+
+                Spacer()
+
+                Button("Réessayer") {
+                    Task {
+                        await viewModel.refreshCanvasBattery()
+                    }
+                }
+                .buttonStyle(.borderless)
+                .disabled(viewModel.isRefreshingStatus)
             }
         }
-        .alert("Erreur", isPresented: $showingError, presenting: viewModel.errorText) { _ in
-            Button("OK", role: .cancel) {
-                viewModel.clearError()
+    }
+
+    // Everything that drives the playlist lives here: state, start/pause, interval.
+    private var playlistSection: some View {
+        Section {
+            if let progress = viewModel.playlistProgress {
+                HStack(spacing: 12) {
+                    currentImageThumbnail
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label(
+                            progress.status == .paused ? "Playlist (en pause)" : "Playlist",
+                            systemImage: progress.status == .paused ? "pause.circle.fill" : "photo.stack"
+                        )
+                        // Grouped digits: albums can exceed 1,000 images.
+                        Text(verbatim: "\(progress.displayed.formatted()) / \(progress.total.formatted())")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                    }
+
+                    Spacer(minLength: 8)
+
+                    PlaylistProgressRing(
+                        fraction: progress.total > 0 ? Double(progress.displayed) / Double(progress.total) : 0,
+                        tint: progress.status == .paused ? .orange : .accentColor
+                    )
+                }
+                .accessibilityElement(children: .combine)
+
+                // A missed wake-up is reported in the BLOOMIN8 section instead.
+                if progress.status == .inProgress, let nextPullDate = progress.nextPullDate, !viewModel.isCanvasSilent {
+                    LabeledContent {
+                        Text(nextPullDate, format: .relative(presentation: .named))
+                            .foregroundStyle(.secondary)
+                    } label: {
+                        Label("Prochaine image", systemImage: "clock.arrow.2.circlepath")
+                    }
+                }
+
+                Toggle(isOn: pausePlaylistBinding) {
+                    Label {
+                        Text(pauseToggleLabel)
+                    } icon: {
+                        Image(systemName: "pause.circle.fill")
+                    }
+                }
+                .disabled(!viewModel.canPausePlaylist && !viewModel.canResumePlaylist)
+            } else {
+                Button {
+                    viewModel.startPlaylist()
+                } label: {
+                    Label(
+                        viewModel.isStartingPlaylist ? "Démarrage..." : "Démarrer la playlist",
+                        systemImage: "play.fill"
+                    )
+                }
+                .disabled(!viewModel.canStartPlaylist)
             }
-        } message: { error in
-            Text(error)
+
+            // Editable before the first start too: the interval is a start parameter.
+            Picker(selection: $viewModel.cronIntervalInHours) {
+                ForEach(intervalChoices, id: \.self) { hours in
+                    Text(formattedInterval(hours)).tag(hours)
+                }
+            } label: {
+                Label {
+                    HStack(spacing: 6) {
+                        Text("Intervalle")
+                        if viewModel.isUpdatingInterval {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                    }
+                } icon: {
+                    Image(systemName: "clock")
+                }
+            }
+            .pickerStyle(.menu)
+            .onChange(of: viewModel.cronIntervalInHours) { _, newValue in
+                guard (1...168).contains(newValue) else { return }
+                viewModel.updatePlaylistInterval(newValue)
+            }
+        } header: {
+            Text("Playlist")
+        } footer: {
+            if viewModel.playlistProgress == nil {
+                Text("Pour lancer la playlist, le Canvas doit être accessible sur le réseau. Réveillez-le à partir de l'application BLOOMIN8.")
+            } else {
+                Text("Le nouvel intervalle sera appliqué au prochain réveil du Canvas.")
+            }
         }
-        .onChange(of: viewModel.errorText) { _, newError in
-            showingError = newError != nil
+    }
+
+    // Portrait thumbnail with the panel's 3:4 ratio. Images are immutable on the
+    // server (cache-control: immutable), so URLCache serves repeated loads.
+    private var currentImageThumbnail: some View {
+        AsyncImage(url: viewModel.currentImageURL) { image in
+            image.resizable().scaledToFill()
+        } placeholder: {
+            Image(systemName: "photo")
+                .foregroundStyle(.tertiary)
         }
-        .sensoryFeedback(trigger: viewModel.uploadCompletionCount) { _, _ in
-            viewModel.lastUploadOutcome == .failure ? .error : .success
-        }
-        .sensoryFeedback(.success, trigger: viewModel.playlistActionCount)
+        .frame(width: 48, height: 64)
+        .background(.quaternary)
+        .clipShape(.rect(cornerRadius: 6))
+        .accessibilityLabel("Image affichée sur le Canvas")
+    }
+
+    private func formattedHour(_ hour: Int) -> String {
+        let date = Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: .now) ?? .now
+        return date.formatted(.dateTime.hour())
     }
 
     private var configurationSection: some View {
@@ -81,7 +253,7 @@ struct ContentView: View {
             }
 
             NavigationLink {
-                SettingsView {
+                SettingsView(isDeviceURLLocked: viewModel.playlistProgress != nil) {
                     Task {
                         await viewModel.refreshCanvasBattery()
                     }
@@ -89,106 +261,38 @@ struct ContentView: View {
             } label: {
                 Label("Modifier les réglages", systemImage: "gearshape")
             }
-
-            LabeledContent {
-                HStack(spacing: 8) {
-                    Button {
-                        viewModel.cronIntervalInHours = max(1, viewModel.cronIntervalInHours - 1)
-                    } label: {
-                        Image(systemName: "minus")
-                    }
-                    .buttonStyle(.borderless)
-                    .disabled(viewModel.cronIntervalInHours <= 1)
-                    .accessibilityLabel("Réduire l'intervalle")
-
-                    HStack(spacing: 2) {
-                        Text("\(viewModel.cronIntervalInHours)")
-                            .monospacedDigit()
-                        Text("h")
-                            .foregroundStyle(.secondary)
-                        if viewModel.isUpdatingInterval {
-                            ProgressView()
-                                .controlSize(.small)
-                                .padding(.leading, 4)
-                        }
-                    }
-
-                    Button {
-                        viewModel.cronIntervalInHours = min(168, viewModel.cronIntervalInHours + 1)
-                    } label: {
-                        Image(systemName: "plus")
-                    }
-                    .buttonStyle(.borderless)
-                    .disabled(viewModel.cronIntervalInHours >= 168)
-                    .accessibilityLabel("Augmenter l'intervalle")
-                }
-            } label: {
-                Label("Intervalle", systemImage: "clock")
-            }
-            .disabled(!viewModel.canEditInterval)
-            .onChange(of: viewModel.cronIntervalInHours) { _, newValue in
-                guard (1...168).contains(newValue) else { return }
-                viewModel.updatePlaylistInterval(newValue)
-            }
-        } footer: {
-            if viewModel.canEditInterval {
-                Text("Le nouvel intervalle sera appliqué au prochain réveil du Canvas.")
-            } else {
-                Text("Démarrez une playlist pour pouvoir modifier l'intervalle.")
-            }
+        } header: {
+            Text("Réglages")
         }
     }
 
     private var quietHoursSection: some View {
         Section {
-            Toggle(isOn: pausePlaylistBinding) {
-                Label {
-                    Text(pauseToggleLabel)
-                } icon: {
-                    Image(systemName: "pause.circle.fill")
-                }
+            Toggle(isOn: $viewModel.quietHoursEnabled) {
+                Label("Mode nuit", systemImage: "moon.fill")
             }
-            .disabled(!viewModel.canPausePlaylist && !viewModel.canResumePlaylist)
 
-            Group {
-                Toggle(isOn: $viewModel.quietHoursEnabled) {
-                    Label("Mode nuit", systemImage: "moon.fill")
+            if viewModel.quietHoursEnabled {
+                Picker(selection: $viewModel.quietHoursStart) {
+                    ForEach(0..<24, id: \.self) { hour in
+                        Text(formattedHour(hour)).tag(hour)
+                    }
+                } label: {
+                    Label("Début", systemImage: "moon.stars")
                 }
+                .pickerStyle(.menu)
 
-                if viewModel.quietHoursEnabled {
-                    Picker(selection: $viewModel.quietHoursStart) {
-                        ForEach(0..<24, id: \.self) { hour in
-                            Text("\(hour)h").tag(hour)
-                        }
-                    } label: {
-                        Label("Début", systemImage: "moon.stars")
+                Picker(selection: $viewModel.quietHoursEnd) {
+                    ForEach(0..<24, id: \.self) { hour in
+                        Text(formattedHour(hour)).tag(hour)
                     }
-                    .pickerStyle(.menu)
-
-                    Picker(selection: $viewModel.quietHoursEnd) {
-                        ForEach(0..<24, id: \.self) { hour in
-                            Text("\(hour)h").tag(hour)
-                        }
-                    } label: {
-                        Label("Fin", systemImage: "sun.horizon")
-                    }
-                    .pickerStyle(.menu)
-
-                    NavigationLink {
-                        TimeZonePickerView(selection: $viewModel.quietHoursTimezone)
-                    } label: {
-                        LabeledContent {
-                            Text(viewModel.quietHoursTimezone.replacingOccurrences(of: "_", with: " "))
-                                .foregroundStyle(.secondary)
-                        } label: {
-                            Label("Fuseau horaire", systemImage: "globe")
-                        }
-                    }
+                } label: {
+                    Label("Fin", systemImage: "sun.horizon")
                 }
+                .pickerStyle(.menu)
             }
-            .disabled(viewModel.isPlaylistPaused)
         } footer: {
-            Text("Pause le défilement des images entre \(viewModel.quietHoursStart)h et \(viewModel.quietHoursEnd)h dans le fuseau horaire sélectionné. Le Canvas reste en veille pendant cette période.")
+            Text("Pause le défilement des images entre \(formattedHour(viewModel.quietHoursStart)) et \(formattedHour(viewModel.quietHoursEnd)), à l'heure de l'iPhone. Le Canvas reste en veille pendant cette période.")
         }
     }
 
@@ -214,25 +318,8 @@ struct ContentView: View {
         return String(localized: "Mettre en pause")
     }
 
-    private var batterySection: some View {
+    private var canvasSection: some View {
         Section {
-            if !viewModel.isServerReachable {
-                HStack {
-                    Label("Serveur injoignable", systemImage: "wifi.exclamationmark")
-                        .foregroundStyle(.orange)
-
-                    Spacer()
-
-                    Button("Réessayer") {
-                        Task {
-                            await viewModel.refreshCanvasBattery()
-                        }
-                    }
-                    .buttonStyle(.borderless)
-                    .disabled(viewModel.isRefreshingStatus)
-                }
-            }
-
             HStack {
                 Label {
                     Text("Batterie")
@@ -261,9 +348,9 @@ struct ContentView: View {
                     ?? String(localized: "Indisponible")
             )
 
-            if let days = viewModel.lastFullChargeDays {
+            if let lastFullChargeDate = viewModel.lastFullChargeDate {
                 LabeledContent {
-                    Text("^[\(days) jour](inflect: true)")
+                    Text(lastFullChargeDate, format: .relative(presentation: .named))
                         .foregroundStyle(.secondary)
                 } label: {
                     Label("Dernière charge complète", systemImage: "clock.arrow.circlepath")
@@ -273,36 +360,31 @@ struct ContentView: View {
             if let lastPullDate = viewModel.lastPullDate {
                 LabeledContent {
                     Text(lastPullDate, format: .relative(presentation: .named))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(viewModel.isCanvasSilent ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
                 } label: {
                     Label("Dernier contact", systemImage: "antenna.radiowaves.left.and.right")
                 }
             }
-
-            if let progress = viewModel.playlistProgress {
-                LabeledContent {
-                    HStack(spacing: 6) {
-                        if progress.status == .paused {
-                            Image(systemName: "pause.circle.fill")
-                                .foregroundStyle(.orange)
-                        }
-                        Text("\(progress.displayed)/\(progress.total)")
-                            .foregroundStyle(.secondary)
-                            .contentTransition(.numericText())
-                    }
-                } label: {
-                    Label(progress.status == .paused ? "Playlist (en pause)" : "Playlist", systemImage: "photo.stack")
-                }
-            }
+        } header: {
+            Text("BLOOMIN8")
         } footer: {
-            if let percentage = viewModel.canvasBatteryPercentage, percentage < 10 {
-                Label("Batterie faible, pensez à recharger le Canvas", systemImage: "exclamationmark.triangle.fill")
+            VStack(alignment: .leading, spacing: 6) {
+                if viewModel.isCanvasSilent {
+                    Label(
+                        "Le Canvas a manqué son réveil prévu : il est peut-être déchargé ou hors de portée du Wi-Fi.",
+                        systemImage: "antenna.radiowaves.left.and.right.slash"
+                    )
                     .foregroundStyle(.orange)
+                }
+                // Same threshold as the red battery color.
+                if let percentage = viewModel.canvasBatteryPercentage, percentage <= 20 {
+                    Label("Batterie faible, pensez à recharger le Canvas", systemImage: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                }
             }
         }
     }
 
-    @ViewBuilder
     private var photoSection: some View {
         Section {
             if viewModel.isPhotoAccessGranted {
@@ -357,13 +439,24 @@ struct ContentView: View {
                         }
                     }
 
-                    if !viewModel.statusText.isEmpty {
-                        Label {
-                            Text(viewModel.statusText)
-                                .font(.footnote)
-                        } icon: {
-                            Image(systemName: "info.circle")
-                                .foregroundStyle(.secondary)
+                    if !viewModel.isUploading {
+                        Button {
+                            showingUploadConfirmation = true
+                        } label: {
+                            Label("Uploader l'album", systemImage: "square.and.arrow.up")
+                        }
+                        .disabled(!viewModel.canStartUpload)
+                        .confirmationDialog(
+                            "Remplacer les photos du Canvas ?",
+                            isPresented: $showingUploadConfirmation,
+                            titleVisibility: .visible
+                        ) {
+                            Button("Tout remplacer", role: .destructive) {
+                                viewModel.startUpload()
+                            }
+                            Button("Annuler", role: .cancel) { }
+                        } message: {
+                            Text("Les photos actuelles restent affichées pendant l'envoi, puis sont remplacées par celles de l'album sélectionné.")
                         }
                     }
                 }
@@ -379,37 +472,8 @@ struct ContentView: View {
                     .buttonStyle(.borderedProminent)
                 }
             }
-        }
-
-        if viewModel.isPhotoAccessGranted && !viewModel.albums.isEmpty && !viewModel.isUploading {
-            Section {
-                Button("Uploader l'album") {
-                    showingUploadConfirmation = true
-                }
-                .disabled(!viewModel.canStartUpload)
-                .confirmationDialog(
-                    "Remplacer les photos du Canvas ?",
-                    isPresented: $showingUploadConfirmation,
-                    titleVisibility: .visible
-                ) {
-                    Button("Tout remplacer", role: .destructive) {
-                        viewModel.startUpload()
-                    }
-                    Button("Annuler", role: .cancel) { }
-                } message: {
-                    Text("Toutes les photos actuellement sur le serveur seront supprimées avant l'envoi de l'album sélectionné.")
-                }
-
-                if !viewModel.isPlaylistRunning && !viewModel.isPlaylistPaused {
-                    Button(viewModel.isStartingPlaylist ? "Démarrage..." : "Démarrer la playlist") {
-                        viewModel.startPlaylist()
-                    }
-                    .disabled(!viewModel.canStartPlaylist)
-                }
-            } footer: {
-                Text("Pour lancer la playlist, le Canvas doit être accessible sur le réseau. Réveillez-le à partir de l'application BLOOMIN8.")
-                    .font(.footnote)
-            }
+        } header: {
+            Text("Album")
         }
     }
 
@@ -463,40 +527,81 @@ struct ContentView: View {
     }
 }
 
-#Preview("Default") {
-    ContentView()
-}
+/// Cycle progress as a ring. The center shows a percentage rather than the
+/// counts: "1 234 / 1 500" would not fit, a percentage is at most 4 characters.
+private struct PlaylistProgressRing: View {
+    let fraction: Double
+    let tint: Color
 
-struct TimeZonePickerView: View {
-    @Binding var selection: String
-    @State private var searchText = ""
-    @Environment(\.dismiss) private var dismiss
+    private var percent: Int {
+        Int((min(max(fraction, 0), 1) * 100).rounded())
+    }
 
-    private var filteredTimezones: [String] {
-        let all = TimeZone.knownTimeZoneIdentifiers
-        guard !searchText.isEmpty else { return all }
-        return all.filter { $0.localizedCaseInsensitiveContains(searchText) }
+    private var percentLabel: AttributedString {
+        var number = AttributedString(percent.formatted())
+        number.font = .callout.weight(.semibold)
+        var sign = AttributedString("%")
+        sign.font = .caption2.weight(.semibold)
+        return number + sign
     }
 
     var body: some View {
-        List(filteredTimezones, id: \.self) { tz in
-            Button {
-                selection = tz
-                dismiss()
-            } label: {
-                HStack {
-                    Text(tz.replacingOccurrences(of: "_", with: " "))
-                    Spacer()
-                    if tz == selection {
-                        Image(systemName: "checkmark")
-                            .foregroundStyle(.blue)
-                    }
-                }
-            }
-            .foregroundStyle(.primary)
+        ZStack {
+            Circle()
+                .stroke(.quaternary, lineWidth: 5)
+            Circle()
+                .trim(from: 0, to: min(max(fraction, 0), 1))
+                .stroke(tint, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            // One text run (not an HStack) so the small "%" sits right against
+            // the number, same color.
+            Text(percentLabel)
+                .contentTransition(.numericText())
+                .monospacedDigit()
+                .minimumScaleFactor(0.6)
+                .lineLimit(1)
+                .padding(7)
         }
-        .searchable(text: $searchText, prompt: "Rechercher")
-        .navigationTitle("Fuseau horaire")
-        .navigationBarTitleDisplayMode(.inline)
+        .frame(width: 52, height: 52)
+        .animation(.snappy, value: fraction)
     }
+}
+
+/// Turns the view model's status text into a short-lived toast. Upload steps
+/// are already shown by the progress view, so only the final message (done /
+/// cancelled) is surfaced once the upload is over.
+private struct StatusToastBehavior: ViewModifier {
+    let viewModel: AppViewModel
+    @Binding var toastMessage: String?
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: viewModel.statusText) { _, newText in
+                guard !viewModel.isUploading else { return }
+                show(newText)
+            }
+            .onChange(of: viewModel.isUploading) { _, isUploading in
+                // A locked screen suspends the app and fails the remaining uploads.
+                UIApplication.shared.isIdleTimerDisabled = isUploading
+                if !isUploading { show(viewModel.statusText) }
+            }
+            .task(id: toastMessage) {
+                guard toastMessage != nil else { return }
+                do {
+                    try await Task.sleep(for: .seconds(3))
+                } catch {
+                    return
+                }
+                toastMessage = nil
+            }
+    }
+
+    private func show(_ message: String) {
+        guard !message.isEmpty else { return }
+        toastMessage = message
+    }
+}
+
+#Preview("Default") {
+    ContentView()
 }

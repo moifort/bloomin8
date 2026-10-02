@@ -1,0 +1,3 @@
+mutation KeepOnlyImages($ids: [ImageId!]!) {
+  keepOnlyImages(ids: $ids)
+}

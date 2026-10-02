@@ -13,6 +13,8 @@ struct PlaylistProgress {
     let total: Int
     let status: Status
     let cronIntervalInHours: Int
+    let nextPullDate: Date?
+    let currentImagePath: String?
 }
 
 struct PlaylistService {
@@ -57,7 +59,9 @@ struct PlaylistService {
             displayed: progress.displayed,
             total: progress.total,
             status: status,
-            cronIntervalInHours: Int(progress.cronIntervalInHours) ?? 0
+            cronIntervalInHours: Int(progress.cronIntervalInHours) ?? 0,
+            nextPullDate: progress.nextPullDate.flatMap(GraphQLDate.parse),
+            currentImagePath: progress.currentImagePath
         )
     }
 

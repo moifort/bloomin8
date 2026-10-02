@@ -12,6 +12,7 @@ final class AppViewModel {
     private static let playlistDisplayedDefaultsKey = "canvas.playlist.displayed"
     private static let playlistTotalDefaultsKey = "canvas.playlist.total"
     private static let quietHoursEnabledDefaultsKey = "canvas.quiet-hours.enabled"
+    // Last timezone sent to the server, to re-push when the iPhone's changes.
     private static let quietHoursTimezoneDefaultsKey = "canvas.quiet-hours.timezone"
     private static let quietHoursStartDefaultsKey = "canvas.quiet-hours.start"
     private static let quietHoursEndDefaultsKey = "canvas.quiet-hours.end"
@@ -25,12 +26,6 @@ final class AppViewModel {
     var quietHoursEnabled: Bool {
         didSet {
             persistQuietHoursEnabled()
-            pushQuietHours()
-        }
-    }
-    var quietHoursTimezone: String {
-        didSet {
-            persistQuietHoursTimezone()
             pushQuietHours()
         }
     }
@@ -75,7 +70,6 @@ final class AppViewModel {
             persistLastFullChargeDate()
         }
     }
-    private(set) var lastFullChargeDays: Int?
     private(set) var lastPullDate: Date? {
         didSet {
             persistLastPullDate()
@@ -112,7 +106,6 @@ final class AppViewModel {
             ?? userDefaults.string(forKey: CanvasSettings.deviceURLKey)
             ?? CanvasSettings.defaultDeviceURL
         self.quietHoursEnabled = userDefaults.bool(forKey: Self.quietHoursEnabledDefaultsKey)
-        self.quietHoursTimezone = userDefaults.string(forKey: Self.quietHoursTimezoneDefaultsKey) ?? TimeZone.current.identifier
         self.quietHoursStart = userDefaults.object(forKey: Self.quietHoursStartDefaultsKey) as? Int ?? 23
         self.quietHoursEnd = userDefaults.object(forKey: Self.quietHoursEndDefaultsKey) as? Int ?? 7
 
@@ -120,9 +113,7 @@ final class AppViewModel {
             self.canvasBatteryPercentage = cached
         }
         if let timestamp = userDefaults.object(forKey: Self.lastFullChargeDateDefaultsKey) as? Double {
-            let date = Date(timeIntervalSince1970: timestamp)
-            self.lastFullChargeDate = date
-            self.lastFullChargeDays = Calendar.current.dateComponents([.day], from: date, to: Date()).day ?? 0
+            self.lastFullChargeDate = Date(timeIntervalSince1970: timestamp)
         }
         if let timestamp = userDefaults.object(forKey: Self.lastPullDateDefaultsKey) as? Double {
             self.lastPullDate = Date(timeIntervalSince1970: timestamp)
@@ -164,6 +155,20 @@ final class AppViewModel {
         playlistProgress?.status == .paused
     }
 
+    /// True when the device missed its scheduled wake-up (with a grace period
+    /// for clock drift): likely out of battery or out of Wi-Fi range.
+    var isCanvasSilent: Bool {
+        guard let nextPullDate = playlistProgress?.nextPullDate else { return false }
+        return Date().timeIntervalSince(nextPullDate) > 30 * 60
+    }
+
+    /// Absolute URL of the image currently on the Canvas.
+    var currentImageURL: URL? {
+        guard let path = playlistProgress?.currentImagePath,
+              let baseURL = validatedHTTPURL(serverURL) else { return nil }
+        return URL(string: path, relativeTo: baseURL)?.absoluteURL
+    }
+
     var canPausePlaylist: Bool {
         isPlaylistRunning && !isUploading && !isStartingPlaylist && !isPausingPlaylist
     }
@@ -172,21 +177,18 @@ final class AppViewModel {
         isPlaylistPaused && !isUploading && !isStartingPlaylist && !isPausingPlaylist
     }
 
-    var canEditInterval: Bool {
-        playlistProgress != nil
-    }
-
     func clearError() {
         errorText = nil
     }
 
     func bootstrap() async {
+        // Status first: it must not wait for the user to answer the Photos prompt.
+        await refreshCanvasBattery()
+
         authorizationStatus = PhotoLibraryService.authorizationStatus()
         if !isPhotoAccessGranted {
             authorizationStatus = await PhotoLibraryService.requestAuthorization()
         }
-
-        await refreshCanvasBattery()
         guard isPhotoAccessGranted else { return }
         reloadAlbums()
     }
@@ -215,29 +217,12 @@ final class AppViewModel {
             if let batteryData = try await batteryResult {
                 canvasBatteryPercentage = batteryData.percentage
 
-                let dateFormatter = ISO8601DateFormatter()
-                dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-                if let lastChargeDateString = batteryData.lastFullChargeDate,
-                   let lastChargeDate = dateFormatter.date(from: lastChargeDateString) {
-                    self.lastFullChargeDate = lastChargeDate
-                    let days = Calendar.current.dateComponents([.day], from: lastChargeDate, to: Date()).day ?? 0
-                    lastFullChargeDays = days
-                } else {
-                    lastFullChargeDate = nil
-                    lastFullChargeDays = nil
-                }
-
-                if let lastPullDateString = batteryData.lastPullDate,
-                   let pullDate = dateFormatter.date(from: lastPullDateString) {
-                    self.lastPullDate = pullDate
-                } else {
-                    lastPullDate = nil
-                }
+                lastFullChargeDate = batteryData.lastFullChargeDate.flatMap(GraphQLDate.parse)
+                lastPullDate = batteryData.lastPullDate.flatMap(GraphQLDate.parse)
             } else {
                 // The server answered but has never seen a battery report.
                 canvasBatteryPercentage = nil
                 lastFullChargeDate = nil
-                lastFullChargeDays = nil
                 lastPullDate = nil
             }
         } catch {
@@ -251,6 +236,10 @@ final class AppViewModel {
                 serverCronIntervalInHours = progress.cronIntervalInHours
                 if playlistIntervalTask == nil {
                     cronIntervalInHours = progress.cronIntervalInHours
+                }
+                if quietHoursEnabled,
+                   userDefaults.string(forKey: Self.quietHoursTimezoneDefaultsKey) != TimeZone.current.identifier {
+                    pushQuietHours(silent: true)
                 }
             }
         } catch {
@@ -384,7 +373,8 @@ final class AppViewModel {
         }
     }
 
-    private func pushQuietHours() {
+    /// `silent`: background sync (iPhone timezone change) — no toast for it.
+    private func pushQuietHours(silent: Bool = false) {
         guard playlistProgress != nil else { return }
         guard let url = validatedHTTPURL(serverURL) else { return }
 
@@ -395,16 +385,19 @@ final class AppViewModel {
             } catch {
                 return
             }
-            await runQuietHoursUpdate(baseURL: url)
+            await runQuietHoursUpdate(baseURL: url, silent: silent)
         }
     }
 
-    private func runQuietHoursUpdate(baseURL: URL) async {
+    private func runQuietHoursUpdate(baseURL: URL, silent: Bool) async {
         defer { quietHoursTask = nil }
 
         let service = PlaylistService(baseURL: baseURL)
         do {
-            statusText = try await service.updateQuietHours(quietHoursPayload())
+            let payload = quietHoursPayload()
+            let message = try await service.updateQuietHours(payload)
+            if !silent { statusText = message }
+            markQuietHoursTimezoneSent(payload)
         } catch {
             errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         }
@@ -413,7 +406,8 @@ final class AppViewModel {
     private func quietHoursPayload() -> PlaylistService.QuietHoursPayload {
         PlaylistService.QuietHoursPayload(
             enabled: quietHoursEnabled,
-            timezone: quietHoursTimezone,
+            // Quiet hours follow the iPhone's clock, wherever it travels.
+            timezone: TimeZone.current.identifier,
             start: quietHoursStart,
             end: quietHoursEnd
         )
@@ -436,28 +430,13 @@ final class AppViewModel {
             return
         }
 
-        statusText = String(localized: "Suppression des photos serveur...")
-        let imageService = ImageService(baseURL: baseURL)
-        do {
-            _ = try await imageService.deleteAll()
-        } catch {
-            errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-            lastUploadOutcome = .failure
-            uploadCompletionCount += 1
-            return
-        }
-
-        if Task.isCancelled {
-            statusText = String(localized: "Upload annulé.")
-            return
-        }
-
         statusText = String(localized: "Upload en cours...")
         let uploader = UploadService(baseURL: baseURL)
         progress = UploadProgress(total: assets.count, processed: 0, uploaded: 0, failed: 0)
 
         let concurrencyLimit = min(maxConcurrentUploads, assets.count)
         var nextAssetIndex = 0
+        var uploadedIDs: [String] = []
 
         await withTaskGroup(of: UploadItemResult.self) { group in
             while nextAssetIndex < concurrencyLimit {
@@ -476,8 +455,9 @@ final class AppViewModel {
                 }
 
                 switch itemResult {
-                case .uploaded:
+                case let .uploaded(id):
                     progress.uploaded += 1
+                    uploadedIDs.append(id)
                 case .failed:
                     progress.failed += 1
                 case .cancelled:
@@ -497,9 +477,31 @@ final class AppViewModel {
             }
         }
 
+        // The old album stayed on the Canvas during the upload; it is only
+        // replaced once the new photos are on the server.
+        let imageService = ImageService(baseURL: baseURL)
+
         if Task.isCancelled {
+            // Roll back so the old album stays exactly as it was. Apollo calls are
+            // not cancellation-aware, so this still runs on a cancelled task.
+            if !uploadedIDs.isEmpty {
+                try? await imageService.delete(ids: uploadedIDs)
+            }
             statusText = String(localized: "Upload annulé.")
             return
+        }
+
+        // Nothing reached the server: keep the current album untouched.
+        if !uploadedIDs.isEmpty {
+            statusText = String(localized: "Suppression des photos serveur...")
+            do {
+                try await imageService.keepOnly(ids: uploadedIDs)
+            } catch {
+                errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                lastUploadOutcome = .failure
+                uploadCompletionCount += 1
+                return
+            }
         }
 
         statusText = String(localized: "Terminé : \(progress.uploaded) envoyées, \(progress.failed) échecs.")
@@ -508,7 +510,7 @@ final class AppViewModel {
     }
 
     private enum UploadItemResult {
-        case uploaded
+        case uploaded(id: String)
         case failed
         case cancelled
     }
@@ -530,11 +532,11 @@ final class AppViewModel {
                 return .failed
             }
 
-            _ = try await uploader.uploadJPEG(
+            let id = try await uploader.uploadJPEG(
                 processedImage.jpegData,
                 orientation: processedImage.orientation.rawValue
             )
-            return .uploaded
+            return .uploaded(id: id)
         } catch {
             return Task.isCancelled ? .cancelled : .failed
         }
@@ -556,11 +558,13 @@ final class AppViewModel {
 
         let service = PlaylistService(baseURL: baseURL)
         do {
+            let quietHours = quietHoursEnabled ? quietHoursPayload() : nil
             let result = try await service.start(
                 canvasURL: canvasURL,
                 cronIntervalInHours: cronIntervalInHours,
-                quietHours: quietHoursEnabled ? quietHoursPayload() : nil
+                quietHours: quietHours
             )
+            markQuietHoursTimezoneSent(quietHours)
             statusText = result.message
             playlistActionCount += 1
         } catch {
@@ -681,7 +685,8 @@ final class AppViewModel {
         userDefaults.set(quietHoursEnabled, forKey: Self.quietHoursEnabledDefaultsKey)
     }
 
-    private func persistQuietHoursTimezone() {
-        userDefaults.set(quietHoursTimezone, forKey: Self.quietHoursTimezoneDefaultsKey)
+    private func markQuietHoursTimezoneSent(_ payload: PlaylistService.QuietHoursPayload?) {
+        guard let payload else { return }
+        userDefaults.set(payload.timezone, forKey: Self.quietHoursTimezoneDefaultsKey)
     }
 }
