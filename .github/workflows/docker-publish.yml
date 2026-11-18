@@ -16,6 +16,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # arm64 only: the server runs on a Raspberry Pi 4 of the homelab (pi2). GitHub's runners are
+      # amd64, so QEMU emulates the arm64 build.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -48,6 +53,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
+          platforms: linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
