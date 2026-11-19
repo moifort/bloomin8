@@ -660,6 +660,8 @@ private struct StatusToastBehavior: ViewModifier {
     private func show(_ message: String) {
         guard !message.isEmpty else { return }
         toastMessage = message
+        // The toast is purely visual and disappears after 3 s: read it out.
+        AccessibilityNotification.Announcement(message).post()
     }
 }
 
