@@ -8,4 +8,5 @@
 import ApolloAPI
 
 /// Battery percentage, integer in [0, 100]
-public typealias Percentage = String
+/// The server serializes it as a JSON number: decoded straight into `Int`.
+public typealias Percentage = Int

@@ -8,4 +8,5 @@
 import ApolloAPI
 
 /// Cron interval in hours, integer in [1, 168]
-public typealias Hour = String
+/// The server serializes it as a JSON number: decoded straight into `Int`.
+public typealias Hour = Int

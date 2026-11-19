@@ -40,7 +40,7 @@ struct PlaylistService {
     func start(canvasURL: URL, cronIntervalInHours: Int, quietHours: QuietHoursPayload? = nil) async throws -> WakeUpResult {
         let input = CanvasGraphQL.StartPlaylistInput(
             canvasUrl: canvasURL.absoluteString,
-            cronIntervalInHours: String(cronIntervalInHours),
+            cronIntervalInHours: cronIntervalInHours,
             quietHours: quietHours.map { .init(quietHoursInput($0)) } ?? .none
         )
         let mutation = CanvasGraphQL.StartPlaylistMutation(input: input)
@@ -60,7 +60,7 @@ struct PlaylistService {
             displayed: progress.displayed,
             total: progress.total,
             status: status,
-            cronIntervalInHours: Int(progress.cronIntervalInHours) ?? 0,
+            cronIntervalInHours: progress.cronIntervalInHours,
             nextPullDate: progress.nextPullDate.flatMap(GraphQLDate.parse),
             currentImagePath: progress.currentImagePath
         )
@@ -82,7 +82,7 @@ struct PlaylistService {
 
     func updateInterval(cronIntervalInHours: Int) async throws -> String {
         let mutation = CanvasGraphQL.UpdatePlaylistIntervalMutation(
-            cronIntervalInHours: String(cronIntervalInHours)
+            cronIntervalInHours: cronIntervalInHours
         )
         _ = try await GraphQLClient.client(for: baseURL).performAsync(mutation)
         return String(localized: "Intervalle mis à jour")

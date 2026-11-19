@@ -138,12 +138,8 @@ private struct CanvasBatteryProvider: TimelineProvider {
     private func fetchBatteryData(client: ApolloClient) async -> (percentage: Int, lastChargeDate: Date?, lastPullDate: Date?)? {
         do {
             let data = try await widgetFetch(client: client, query: CanvasGraphQL.CanvasBatteryWidgetQuery())
-            guard
-                let battery = data.canvasBattery,
-                let percentage = Int(battery.percentage)
-            else {
-                return nil
-            }
+            guard let battery = data.canvasBattery else { return nil }
+            let percentage = battery.percentage
             let chargeDate = battery.lastFullChargeDate.flatMap(GraphQLDate.parse)
             let pullDate = battery.lastPullDate.flatMap(GraphQLDate.parse)
             return (percentage, chargeDate, pullDate)
