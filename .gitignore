@@ -31,3 +31,6 @@ DerivedData/
 
 # Xcode builds from worktrees (fixed -derivedDataPath)
 /build/
+
+# apollo-ios-cli downloaded by ios/scripts/apollo-codegen.sh
+/ios/.tools/

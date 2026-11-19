@@ -39,7 +39,7 @@ docker compose up --build        # Run in Docker
 After regenerating the GraphQL schema, regenerate Apollo iOS types:
 
 ```bash
-cd ios && /tmp/apollo-ios-cli generate
+bun run generate:ios               # = ios/scripts/apollo-codegen.sh
 ```
 
 ### Architecture (DDD layout)
@@ -178,7 +178,7 @@ ios/
 ### Codegen Workflow
 
 1. Edit `.graphql` operations under `Canvas/Canvas/Features/**/GraphQL/` or `Canvas/CanvasBatteryWidget/GraphQL/`.
-2. Run `cd ios && /tmp/apollo-ios-cli generate` (binary downloaded from apollo-ios releases 1.18.0).
+2. Run `bun run generate:ios` (`ios/scripts/apollo-codegen.sh`): on first use it downloads apollo-ios-cli 1.18.0 into `ios/.tools/` (gitignored, SHA-256 checked), then runs `generate` from `ios/`.
 3. Commit the regenerated `Canvas/CanvasGraphQL/Sources/` to keep the build reproducible.
 4. After backend schema changes: run `bun run generate:graphql` first, commit `shared/schema.graphql`, then run iOS codegen.
 
@@ -186,7 +186,7 @@ ios/
 
 ### Backend
 
-- `bun test`: unit tests on `*.unit.test.ts` files (primitives + business-rules). 54 tests at the time of this writing.
+- `bun test`: unit tests on `*.unit.test.ts` files (primitives + business-rules) and integration tests on `*.integration.test.ts` files (domain commands against an in-memory `useStorage`, see `server/testing/memory-storage.ts`). 82 tests at the time of this writing.
 - `api.http`: ready-to-run REST + GraphQL request samples.
 - `bun run dev` + `curl` for end-to-end smoke testing.
 

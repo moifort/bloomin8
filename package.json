@@ -6,7 +6,8 @@
     "dev": "nitro dev --host 0.0.0.0",
     "preview": "node .output/server/index.mjs",
     "generate:graphql": "bun scripts/export-graphql-schema.ts",
-    "generate": "bun run generate:graphql"
+    "generate:ios": "ios/scripts/apollo-codegen.sh",
+    "generate": "bun run generate:graphql && bun run generate:ios"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.8",
