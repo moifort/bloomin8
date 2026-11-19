@@ -320,7 +320,14 @@ struct ContentView: View {
                 .pickerStyle(.menu)
             }
         } footer: {
-            Text("Pause le défilement des images entre \(formattedHour(viewModel.quietHoursStart)) et \(formattedHour(viewModel.quietHoursEnd)), à l'heure de l'iPhone. Le Canvas reste en veille pendant cette période.")
+            // The server ignores an empty window (start == end): say so instead
+            // of promising a pause "between 23 h and 23 h".
+            if viewModel.quietHoursEnabled, viewModel.quietHoursStart == viewModel.quietHoursEnd {
+                Label("Le début et la fin sont à la même heure : le mode nuit n'a aucun effet. Choisissez deux heures différentes.", systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+            } else {
+                Text("Pause le défilement des images entre \(formattedHour(viewModel.quietHoursStart)) et \(formattedHour(viewModel.quietHoursEnd)), à l'heure de l'iPhone. Le Canvas reste en veille pendant cette période.")
+            }
         }
     }
 
