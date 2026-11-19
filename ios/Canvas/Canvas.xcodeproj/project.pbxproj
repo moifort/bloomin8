@@ -11,6 +11,8 @@
 		AB200001000000000000000E /* Apollo in Frameworks */ = {isa = PBXBuildFile; productRef = AB200001000000000000000C /* Apollo */; };
 		AB200001000000000000001D /* CanvasGraphQL in Frameworks */ = {isa = PBXBuildFile; productRef = AB200001000000000000001B /* CanvasGraphQL */; };
 		AB200001000000000000001E /* CanvasGraphQL in Frameworks */ = {isa = PBXBuildFile; productRef = AB200001000000000000001C /* CanvasGraphQL */; };
+		AB200001000000000000002D /* CanvasShared in Frameworks */ = {isa = PBXBuildFile; productRef = AB200001000000000000002B /* CanvasShared */; };
+		AB200001000000000000002E /* CanvasShared in Frameworks */ = {isa = PBXBuildFile; productRef = AB200001000000000000002C /* CanvasShared */; };
 		BF02AA000000000000000003 /* CanvasBatteryWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = BF02AA000000000000000001 /* CanvasBatteryWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
@@ -63,6 +65,7 @@
 			files = (
 				AB200001000000000000000D /* Apollo in Frameworks */,
 				AB200001000000000000001D /* CanvasGraphQL in Frameworks */,
+				AB200001000000000000002D /* CanvasShared in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -72,6 +75,7 @@
 			files = (
 				AB200001000000000000000E /* Apollo in Frameworks */,
 				AB200001000000000000001E /* CanvasGraphQL in Frameworks */,
+				AB200001000000000000002E /* CanvasShared in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -120,6 +124,7 @@
 			packageProductDependencies = (
 				AB200001000000000000000B /* Apollo */,
 				AB200001000000000000001B /* CanvasGraphQL */,
+				AB200001000000000000002B /* CanvasShared */,
 			);
 			productName = Canvas;
 			productReference = BF01EF402F36C1F800FC17DD /* Canvas.app */;
@@ -144,6 +149,7 @@
 			packageProductDependencies = (
 				AB200001000000000000000C /* Apollo */,
 				AB200001000000000000001C /* CanvasGraphQL */,
+				AB200001000000000000002C /* CanvasShared */,
 			);
 			productName = CanvasBatteryWidget;
 			productReference = BF02AA000000000000000001 /* CanvasBatteryWidget.appex */;
@@ -180,6 +186,7 @@
 			packageReferences = (
 				AB200001000000000000000A /* XCRemoteSwiftPackageReference "apollo-ios" */,
 				AB200001000000000000001A /* XCLocalSwiftPackageReference "CanvasGraphQL" */,
+				AB200001000000000000002A /* XCLocalSwiftPackageReference "CanvasShared" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = BF01EF412F36C1F800FC17DD /* Products */;
@@ -541,6 +548,10 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = CanvasGraphQL;
 		};
+		AB200001000000000000002A /* XCLocalSwiftPackageReference "CanvasShared" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = CanvasShared;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -572,6 +583,14 @@
 		AB200001000000000000001C /* CanvasGraphQL */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = CanvasGraphQL;
+		};
+		AB200001000000000000002B /* CanvasShared */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CanvasShared;
+		};
+		AB200001000000000000002C /* CanvasShared */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CanvasShared;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -1,3 +1,4 @@
+import CanvasShared
 import SwiftUI
 
 @main

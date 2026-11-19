@@ -1,4 +1,5 @@
 import CanvasGraphQL
+import CanvasShared
 import Foundation
 
 struct PlaylistProgress {

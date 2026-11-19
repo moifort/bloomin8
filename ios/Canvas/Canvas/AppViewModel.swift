@@ -1,3 +1,4 @@
+import CanvasShared
 import Foundation
 import Observation
 import Photos
@@ -6,11 +7,8 @@ import WidgetKit
 @MainActor
 @Observable
 final class AppViewModel {
-    private static let batteryPercentageDefaultsKey = "canvas.battery.percentage"
-    private static let lastFullChargeDateDefaultsKey = "canvas.battery.last-full-charge-date"
-    private static let lastPullDateDefaultsKey = "canvas.battery.last-pull-date"
-    private static let playlistDisplayedDefaultsKey = "canvas.playlist.displayed"
-    private static let playlistTotalDefaultsKey = "canvas.playlist.total"
+    // Status cache keys are shared with the widget (CanvasCacheKeys); quiet
+    // hours are app-only settings.
     private static let quietHoursEnabledDefaultsKey = "canvas.quiet-hours.enabled"
     // Last timezone sent to the server, to re-push when the iPhone's changes.
     private static let quietHoursTimezoneDefaultsKey = "canvas.quiet-hours.timezone"
@@ -98,35 +96,27 @@ final class AppViewModel {
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
-        self.sharedDefaults = UserDefaults(suiteName: CanvasSettings.appGroupSuiteName)
-        self.serverURL = sharedDefaults?.string(forKey: CanvasSettings.serverURLKey)
-            ?? userDefaults.string(forKey: CanvasSettings.serverURLKey)
-            ?? CanvasSettings.defaultServerURL
-        self.canvasURL = sharedDefaults?.string(forKey: CanvasSettings.deviceURLKey)
-            ?? userDefaults.string(forKey: CanvasSettings.deviceURLKey)
-            ?? CanvasSettings.defaultDeviceURL
+        self.sharedDefaults = CanvasSettings.sharedDefaults
+        self.serverURL = CanvasSettings.serverURL
+        self.canvasURL = CanvasSettings.deviceURL
         self.quietHoursEnabled = userDefaults.bool(forKey: Self.quietHoursEnabledDefaultsKey)
         self.quietHoursStart = userDefaults.object(forKey: Self.quietHoursStartDefaultsKey) as? Int ?? 23
         self.quietHoursEnd = userDefaults.object(forKey: Self.quietHoursEndDefaultsKey) as? Int ?? 7
 
-        if let cached = userDefaults.object(forKey: Self.batteryPercentageDefaultsKey) as? Int {
+        if let cached = userDefaults.object(forKey: CanvasCacheKeys.batteryPercentage) as? Int {
             self.canvasBatteryPercentage = cached
         }
-        if let timestamp = userDefaults.object(forKey: Self.lastFullChargeDateDefaultsKey) as? Double {
+        if let timestamp = userDefaults.object(forKey: CanvasCacheKeys.lastFullChargeDate) as? Double {
             self.lastFullChargeDate = Date(timeIntervalSince1970: timestamp)
         }
-        if let timestamp = userDefaults.object(forKey: Self.lastPullDateDefaultsKey) as? Double {
+        if let timestamp = userDefaults.object(forKey: CanvasCacheKeys.lastPullDate) as? Double {
             self.lastPullDate = Date(timeIntervalSince1970: timestamp)
         }
     }
 
     func reloadConfigFromSettings() {
-        let newServerURL = sharedDefaults?.string(forKey: CanvasSettings.serverURLKey)
-            ?? userDefaults.string(forKey: CanvasSettings.serverURLKey)
-            ?? CanvasSettings.defaultServerURL
-        let newCanvasURL = sharedDefaults?.string(forKey: CanvasSettings.deviceURLKey)
-            ?? userDefaults.string(forKey: CanvasSettings.deviceURLKey)
-            ?? CanvasSettings.defaultDeviceURL
+        let newServerURL = CanvasSettings.serverURL
+        let newCanvasURL = CanvasSettings.deviceURL
         if newServerURL != serverURL {
             serverURL = newServerURL
         }
@@ -650,44 +640,47 @@ final class AppViewModel {
 
     private func persistCanvasBatteryPercentage() {
         guard let canvasBatteryPercentage else {
-            userDefaults.removeObject(forKey: Self.batteryPercentageDefaultsKey)
-            sharedDefaults?.removeObject(forKey: Self.batteryPercentageDefaultsKey)
+            userDefaults.removeObject(forKey: CanvasCacheKeys.batteryPercentage)
+            sharedDefaults?.removeObject(forKey: CanvasCacheKeys.batteryPercentage)
             return
         }
-        userDefaults.set(canvasBatteryPercentage, forKey: Self.batteryPercentageDefaultsKey)
-        sharedDefaults?.set(canvasBatteryPercentage, forKey: Self.batteryPercentageDefaultsKey)
+        userDefaults.set(canvasBatteryPercentage, forKey: CanvasCacheKeys.batteryPercentage)
+        sharedDefaults?.set(canvasBatteryPercentage, forKey: CanvasCacheKeys.batteryPercentage)
     }
 
     private func persistLastFullChargeDate() {
         guard let lastFullChargeDate else {
-            userDefaults.removeObject(forKey: Self.lastFullChargeDateDefaultsKey)
-            sharedDefaults?.removeObject(forKey: Self.lastFullChargeDateDefaultsKey)
+            userDefaults.removeObject(forKey: CanvasCacheKeys.lastFullChargeDate)
+            sharedDefaults?.removeObject(forKey: CanvasCacheKeys.lastFullChargeDate)
             return
         }
         let timestamp = lastFullChargeDate.timeIntervalSince1970
-        userDefaults.set(timestamp, forKey: Self.lastFullChargeDateDefaultsKey)
-        sharedDefaults?.set(timestamp, forKey: Self.lastFullChargeDateDefaultsKey)
+        userDefaults.set(timestamp, forKey: CanvasCacheKeys.lastFullChargeDate)
+        sharedDefaults?.set(timestamp, forKey: CanvasCacheKeys.lastFullChargeDate)
     }
 
     private func persistLastPullDate() {
         guard let lastPullDate else {
-            userDefaults.removeObject(forKey: Self.lastPullDateDefaultsKey)
-            sharedDefaults?.removeObject(forKey: Self.lastPullDateDefaultsKey)
+            userDefaults.removeObject(forKey: CanvasCacheKeys.lastPullDate)
+            sharedDefaults?.removeObject(forKey: CanvasCacheKeys.lastPullDate)
             return
         }
         let timestamp = lastPullDate.timeIntervalSince1970
-        userDefaults.set(timestamp, forKey: Self.lastPullDateDefaultsKey)
-        sharedDefaults?.set(timestamp, forKey: Self.lastPullDateDefaultsKey)
+        userDefaults.set(timestamp, forKey: CanvasCacheKeys.lastPullDate)
+        sharedDefaults?.set(timestamp, forKey: CanvasCacheKeys.lastPullDate)
     }
 
     private func persistPlaylistProgress() {
         guard let progress = playlistProgress else {
-            sharedDefaults?.removeObject(forKey: Self.playlistDisplayedDefaultsKey)
-            sharedDefaults?.removeObject(forKey: Self.playlistTotalDefaultsKey)
+            sharedDefaults?.removeObject(forKey: CanvasCacheKeys.playlistDisplayed)
+            sharedDefaults?.removeObject(forKey: CanvasCacheKeys.playlistTotal)
+            sharedDefaults?.removeObject(forKey: CanvasCacheKeys.nextPullDate)
             return
         }
-        sharedDefaults?.set(progress.displayed, forKey: Self.playlistDisplayedDefaultsKey)
-        sharedDefaults?.set(progress.total, forKey: Self.playlistTotalDefaultsKey)
+        sharedDefaults?.set(progress.displayed, forKey: CanvasCacheKeys.playlistDisplayed)
+        sharedDefaults?.set(progress.total, forKey: CanvasCacheKeys.playlistTotal)
+        // The widget flags a silent Canvas from this date, even before its own fetch.
+        sharedDefaults?.set(progress.nextPullDate?.timeIntervalSince1970, forKey: CanvasCacheKeys.nextPullDate)
     }
 
     private func persistQuietHoursEnabled() {

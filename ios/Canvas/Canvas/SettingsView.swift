@@ -1,4 +1,5 @@
 import CanvasGraphQL
+import CanvasShared
 import SwiftUI
 import WidgetKit
 

@@ -1,20 +1,13 @@
 import Apollo
 import ApolloAPI
 import CanvasGraphQL
+import CanvasShared
 import SwiftUI
 import WidgetKit
 
-private enum CanvasWidgetStore {
-    static let appGroupSuiteName = "group.polyforms.canvas"
-    static let serverURLKey = "canvas.server.url"
-    static let batteryPercentageKey = "canvas.battery.percentage"
-    static let lastFullChargeDateKey = "canvas.battery.last-full-charge-date"
-    static let lastPullDateKey = "canvas.battery.last-pull-date"
-    static let playlistDisplayedKey = "canvas.playlist.displayed"
-    static let playlistTotalKey = "canvas.playlist.total"
-    static let nextPullDateKey = "canvas.playlist.next-pull-date"
-    static let defaultServerURL = "http://canvas.local:3000"
-}
+/// Widget refreshes run on a tight budget: a LAN server that does not answer
+/// within a few seconds is offline, and the cached status is shown instead.
+private let widgetRequestTimeout: TimeInterval = 8
 
 private struct CanvasBatteryEntry: TimelineEntry {
     let date: Date
@@ -89,7 +82,7 @@ private struct CanvasBatteryProvider: TimelineProvider {
             return (cachedPercentage, cachedChargeDate, cachedPullDate, cachedDisplayed, cachedTotal, cachedNextPull)
         }
 
-        let client = WidgetGraphQLClient.client(for: baseURL)
+        let client = CanvasGraphQLClient.make(baseURL: baseURL, timeout: widgetRequestTimeout)
         async let battery = fetchBatteryData(client: client)
         async let playlist = fetchPlaylistProgress(client: client)
 
@@ -139,13 +132,7 @@ private struct CanvasBatteryProvider: TimelineProvider {
     }
 
     private func validatedServerURL() -> URL? {
-        guard
-            let url = URL(string: readServerURL()),
-            ["http", "https"].contains(url.scheme?.lowercased())
-        else {
-            return nil
-        }
-        return url
+        CanvasSettings.validatedHTTPURL(CanvasSettings.serverURL)
     }
 
     private func fetchBatteryData(client: ApolloClient) async -> (percentage: Int, lastChargeDate: Date?, lastPullDate: Date?)? {
@@ -157,10 +144,8 @@ private struct CanvasBatteryProvider: TimelineProvider {
             else {
                 return nil
             }
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            let chargeDate = battery.lastFullChargeDate.flatMap { formatter.date(from: $0) }
-            let pullDate = battery.lastPullDate.flatMap { formatter.date(from: $0) }
+            let chargeDate = battery.lastFullChargeDate.flatMap(GraphQLDate.parse)
+            let pullDate = battery.lastPullDate.flatMap(GraphQLDate.parse)
             return (percentage, chargeDate, pullDate)
         } catch {
             return nil
@@ -171,36 +156,26 @@ private struct CanvasBatteryProvider: TimelineProvider {
         do {
             let data = try await widgetFetch(client: client, query: CanvasGraphQL.PlaylistProgressQuery())
             guard let progress = data.playlistProgress else { return .notFound }
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
             return .found(
                 displayed: progress.displayed,
                 total: progress.total,
-                nextPullDate: progress.nextPullDate.flatMap { formatter.date(from: $0) }
+                nextPullDate: progress.nextPullDate.flatMap(GraphQLDate.parse)
             )
         } catch {
             return nil
         }
     }
 
-    private func readServerURL() -> String {
-        if let sharedServerURL = UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.string(forKey: CanvasWidgetStore.serverURLKey) {
-            return sharedServerURL
-        }
-
-        return CanvasWidgetStore.defaultServerURL
-    }
-
     private func readCachedBatteryPercentage() -> Int? {
-        UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.object(forKey: CanvasWidgetStore.batteryPercentageKey) as? Int
+        CanvasSettings.sharedDefaults?.object(forKey: CanvasCacheKeys.batteryPercentage) as? Int
     }
 
     private func persistBatteryPercentage(_ percentage: Int) {
-        UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.set(percentage, forKey: CanvasWidgetStore.batteryPercentageKey)
+        CanvasSettings.sharedDefaults?.set(percentage, forKey: CanvasCacheKeys.batteryPercentage)
     }
 
     private func readCachedLastFullChargeDate() -> Date? {
-        guard let timestamp = UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.object(forKey: CanvasWidgetStore.lastFullChargeDateKey) as? Double else {
+        guard let timestamp = CanvasSettings.sharedDefaults?.object(forKey: CanvasCacheKeys.lastFullChargeDate) as? Double else {
             return nil
         }
         return Date(timeIntervalSince1970: timestamp)
@@ -208,11 +183,11 @@ private struct CanvasBatteryProvider: TimelineProvider {
 
     private func persistLastFullChargeDate(_ date: Date) {
         let timestamp = date.timeIntervalSince1970
-        UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.set(timestamp, forKey: CanvasWidgetStore.lastFullChargeDateKey)
+        CanvasSettings.sharedDefaults?.set(timestamp, forKey: CanvasCacheKeys.lastFullChargeDate)
     }
 
     private func readCachedLastPullDate() -> Date? {
-        guard let timestamp = UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.object(forKey: CanvasWidgetStore.lastPullDateKey) as? Double else {
+        guard let timestamp = CanvasSettings.sharedDefaults?.object(forKey: CanvasCacheKeys.lastPullDate) as? Double else {
             return nil
         }
         return Date(timeIntervalSince1970: timestamp)
@@ -220,56 +195,42 @@ private struct CanvasBatteryProvider: TimelineProvider {
 
     private func persistLastPullDate(_ date: Date) {
         let timestamp = date.timeIntervalSince1970
-        UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.set(timestamp, forKey: CanvasWidgetStore.lastPullDateKey)
+        CanvasSettings.sharedDefaults?.set(timestamp, forKey: CanvasCacheKeys.lastPullDate)
     }
 
     private func readCachedPlaylistDisplayed() -> Int? {
-        UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.object(forKey: CanvasWidgetStore.playlistDisplayedKey) as? Int
+        CanvasSettings.sharedDefaults?.object(forKey: CanvasCacheKeys.playlistDisplayed) as? Int
     }
 
     private func readCachedPlaylistTotal() -> Int? {
-        UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.object(forKey: CanvasWidgetStore.playlistTotalKey) as? Int
+        CanvasSettings.sharedDefaults?.object(forKey: CanvasCacheKeys.playlistTotal) as? Int
     }
 
     private func readCachedNextPullDate() -> Date? {
-        guard let timestamp = UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)?.object(forKey: CanvasWidgetStore.nextPullDateKey) as? Double else {
+        guard let timestamp = CanvasSettings.sharedDefaults?.object(forKey: CanvasCacheKeys.nextPullDate) as? Double else {
             return nil
         }
         return Date(timeIntervalSince1970: timestamp)
     }
 
     private func persistPlaylistProgress(displayed: Int, total: Int, nextPullDate: Date?) {
-        let defaults = UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)
-        defaults?.set(displayed, forKey: CanvasWidgetStore.playlistDisplayedKey)
-        defaults?.set(total, forKey: CanvasWidgetStore.playlistTotalKey)
-        defaults?.set(nextPullDate?.timeIntervalSince1970, forKey: CanvasWidgetStore.nextPullDateKey)
+        let defaults = CanvasSettings.sharedDefaults
+        defaults?.set(displayed, forKey: CanvasCacheKeys.playlistDisplayed)
+        defaults?.set(total, forKey: CanvasCacheKeys.playlistTotal)
+        defaults?.set(nextPullDate?.timeIntervalSince1970, forKey: CanvasCacheKeys.nextPullDate)
     }
 
     private func clearPlaylistProgress() {
-        let defaults = UserDefaults(suiteName: CanvasWidgetStore.appGroupSuiteName)
-        defaults?.removeObject(forKey: CanvasWidgetStore.playlistDisplayedKey)
-        defaults?.removeObject(forKey: CanvasWidgetStore.playlistTotalKey)
-        defaults?.removeObject(forKey: CanvasWidgetStore.nextPullDateKey)
+        let defaults = CanvasSettings.sharedDefaults
+        defaults?.removeObject(forKey: CanvasCacheKeys.playlistDisplayed)
+        defaults?.removeObject(forKey: CanvasCacheKeys.playlistTotal)
+        defaults?.removeObject(forKey: CanvasCacheKeys.nextPullDate)
     }
 
 }
 
-// Local Apollo client + async fetch helpers, scoped to the widget extension.
-// Duplicates a tiny piece of GraphQLClient.swift to keep the widget binary
-// self-contained (it cannot import sibling Canvas-target files).
-private enum WidgetGraphQLClient {
-    static func client(for baseURL: URL) -> ApolloClient {
-        let url = baseURL.appendingPathComponent("graphql")
-        let store = ApolloStore()
-        let provider = DefaultInterceptorProvider(store: store)
-        let transport = RequestChainNetworkTransport(
-            interceptorProvider: provider,
-            endpointURL: url
-        )
-        return ApolloClient(networkTransport: transport, store: store)
-    }
-}
-
+// Async bridge for Apollo's callback fetch, scoped to the widget extension
+// (the app's richer error mapping lives in its GraphQLClient.swift).
 private enum WidgetGraphQLError: Error {
     case server
     case empty
