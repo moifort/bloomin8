@@ -59,6 +59,18 @@ export namespace PlaylistCommand {
     return playlistId
   }
 
+  // The Canvas got a new address on the LAN: later wake-ups (start/resume)
+  // call it there. The device itself keeps pulling the server as before.
+  export const updateCanvasUrl = async (
+    canvasUrl: CanvasUrl,
+    playlistId: PlaylistId = DEFAULT_PLAYLIST_ID,
+  ) => {
+    const playlist = await playlistRepository.findById(playlistId)
+    if (!playlist) return 'playlist-not-found' as const
+    await playlistRepository.save({ ...playlist, canvasUrl })
+    return playlistId
+  }
+
   // Answers a device pull: the image to show (if any) and when to pull next.
   // The next pull time is stored so the app can show it and detect a device
   // that missed its wake-up.

@@ -121,3 +121,25 @@ builder.mutationField('resumePlaylist', (t) =>
     },
   }),
 )
+
+builder.mutationField('updateCanvasUrl', (t) =>
+  t.field({
+    type: 'PlaylistId',
+    description:
+      'Change the address the server uses to wake the Canvas up (start/resume) of the existing playlist.',
+    args: {
+      canvasUrl: t.arg({
+        type: 'CanvasUrl',
+        required: true,
+        description: 'New base URL of the Canvas on the local network',
+      }),
+    },
+    resolve: async (_root, { canvasUrl }) => {
+      const result = await PlaylistCommand.updateCanvasUrl(canvasUrl)
+      if (result === 'playlist-not-found') {
+        throw new GraphQLError('Playlist not found', { extensions: { code: 'NOT_FOUND' } })
+      }
+      return result
+    },
+  }),
+)

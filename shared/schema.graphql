@@ -53,6 +53,14 @@ type Mutation {
   """
   startPlaylist(input: StartPlaylistInput!): PlaylistWakeUpPayload!
 
+  """
+  Change the address the server uses to wake the Canvas up (start/resume) of the existing playlist.
+  """
+  updateCanvasUrl(
+    """New base URL of the Canvas on the local network"""
+    canvasUrl: CanvasUrl!
+  ): PlaylistId!
+
   """Change the cron interval of the existing playlist."""
   updatePlaylistInterval(
     """New interval between two image displays, in hours"""

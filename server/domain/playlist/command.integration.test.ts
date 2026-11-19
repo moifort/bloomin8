@@ -139,3 +139,26 @@ describe('PlaylistCommand.nextImage', () => {
     expect(await PlaylistCommand.nextImage()).toMatchObject({ kind: 'show' })
   })
 })
+
+describe('PlaylistCommand.updateCanvasUrl', () => {
+  test('answers playlist-not-found before any start', async () => {
+    expect(await PlaylistCommand.updateCanvasUrl(CanvasUrl('http://canvas2.test'))).toBe(
+      'playlist-not-found',
+    )
+  })
+
+  test('wakes the Canvas at its new address afterwards', async () => {
+    await uploadImages(1)
+    await start()
+    await PlaylistCommand.pause()
+    await PlaylistCommand.updateCanvasUrl(CanvasUrl('http://canvas2.test'))
+
+    await PlaylistCommand.resume(serverUrl)
+
+    expect((await PlaylistQuery.findById())?.canvasUrl).toBe(CanvasUrl('http://canvas2.test'))
+    expect(globalThis.fetch).toHaveBeenLastCalledWith(
+      'http://canvas2.test/upstream/pull_settings',
+      expect.anything(),
+    )
+  })
+})
