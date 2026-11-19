@@ -36,13 +36,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The app needs access to your albums to convert and upload photos."
+            "value" : "Canvas needs access to your albums to convert the photos and send them to the frame."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'application a besoin d'accéder à tes albums pour convertir et envoyer les photos."
+            "value" : "Canvas a besoin d'accéder à vos albums pour convertir les photos et les envoyer au cadre."
           }
         }
       }

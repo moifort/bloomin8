@@ -65,6 +65,16 @@
         }
       }
     },
+    "Image affichée sur le Canvas" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Image on the Canvas"
+          }
+        }
+      }
+    },
     "Indisponible" : {
       "localizations" : {
         "en" : {
