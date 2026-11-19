@@ -25,13 +25,17 @@ export namespace PlaylistCommand {
   ) => {
     const allImagesId = await ImageQuery.findAllIds()
     if (allImagesId.length === 0) return 'playlist-empty' as const
+    // A (re)start begins a new cycle but keeps what the Canvas is showing and
+    // the quiet hours already configured when the caller sends none.
+    const previous = await playlistRepository.findById(playlistId)
     await playlistRepository.save({
       id: playlistId,
       status: 'in-progress',
       canvasUrl,
       cronIntervalInHours,
       shownImagesId: [],
-      quietHours,
+      quietHours: quietHours ?? previous?.quietHours,
+      lastImageId: previous?.lastImageId,
       // The device pulls right away when woken; until then nothing is scheduled.
       nextPullAt: undefined,
     })
