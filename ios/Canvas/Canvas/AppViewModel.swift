@@ -424,7 +424,7 @@ final class AppViewModel {
             uploadTask = nil
         }
 
-        let assets = PhotoLibraryService.fetchPhotoAssets(in: albumId)
+        let assets = await Self.fetchPhotoAssets(in: albumId)
         guard !assets.isEmpty else {
             errorText = AppError.noPhotosInAlbum.localizedDescription
             return
@@ -509,13 +509,22 @@ final class AppViewModel {
         uploadCompletionCount += 1
     }
 
-    private enum UploadItemResult {
+    @concurrent
+    private nonisolated static func fetchPhotoAssets(in albumId: String) async -> [PHAsset] {
+        PhotoLibraryService.fetchPhotoAssets(in: albumId)
+    }
+
+    private nonisolated enum UploadItemResult: Sendable {
         case uploaded(id: String)
         case failed
         case cancelled
     }
 
-    private static func uploadAsset(_ asset: PHAsset, uploader: UploadService) async -> UploadItemResult {
+    /// `@concurrent`: each photo is fetched, rendered and sent on the global
+    /// executor, so the five uploads really run in parallel and the main
+    /// thread only handles the progress updates.
+    @concurrent
+    private nonisolated static func uploadAsset(_ asset: PHAsset, uploader: UploadService) async -> UploadItemResult {
         if Task.isCancelled {
             return .cancelled
         }

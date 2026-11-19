@@ -2,7 +2,9 @@ import Foundation
 import Photos
 import UIKit
 
-enum PhotoLibraryService {
+/// PhotoKit fetches and image requests are thread-safe and can be slow on big
+/// libraries: nothing here is tied to the main actor.
+nonisolated enum PhotoLibraryService {
     enum FetchImageError: LocalizedError {
         case cancelled
         case invalidData

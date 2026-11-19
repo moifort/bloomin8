@@ -1,6 +1,6 @@
 import Foundation
 
-struct UploadService {
+nonisolated struct UploadService: Sendable {
     struct ResponseEnvelope: Decodable {
         struct Payload: Decodable {
             let id: String

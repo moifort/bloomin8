@@ -1,16 +1,18 @@
 import UIKit
 
-enum UploadOrientation: String, Sendable {
+nonisolated enum UploadOrientation: String, Sendable {
     case portrait = "P"
     case landscape = "L"
 }
 
-struct ProcessedImage: Sendable {
+nonisolated struct ProcessedImage: Sendable {
     let jpegData: Data
     let orientation: UploadOrientation
 }
 
-enum ImageProcessor {
+/// Runs off the main actor: rendering a 1200×1600 JPEG takes tens of
+/// milliseconds per photo and must never stall the UI.
+nonisolated enum ImageProcessor {
     static let targetSize = CGSize(width: 1200, height: 1600)
 
     /// Aspect-fills the photo into the portrait panel: landscape photos are
@@ -20,6 +22,7 @@ enum ImageProcessor {
         _ image: UIImage,
         compressionQuality: CGFloat = 0.88
     ) -> ProcessedImage? {
+        assert(!Thread.isMainThread, "JPEG rendering must stay off the main thread")
         guard let jpegData = renderAspectFillJPEG(image, compressionQuality: compressionQuality) else {
             return nil
         }

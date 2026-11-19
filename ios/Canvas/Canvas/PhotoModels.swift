@@ -1,6 +1,6 @@
 import Foundation
 
-struct PhotoAlbum: Identifiable, Hashable, Sendable {
+nonisolated struct PhotoAlbum: Identifiable, Hashable, Sendable {
     let id: String
     let title: String
     let photoCount: Int
