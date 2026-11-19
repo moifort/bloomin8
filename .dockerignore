@@ -10,3 +10,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+ios
+data
+build
+*.PNG
+*.md
+docs
+.github
+.claude
+.codex
+api.http
