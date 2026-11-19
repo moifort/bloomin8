@@ -5,6 +5,7 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var showingError = false
     @State private var showingUploadConfirmation = false
+    @State private var showingRestartConfirmation = false
     @State private var toastMessage: String?
 
     private static let intervalPresets = [1, 2, 3, 4, 6, 8, 12, 24, 48, 72, 168]
@@ -194,6 +195,28 @@ struct ContentView: View {
                     }
                 }
                 .tint(.orange)
+
+                Button {
+                    showingRestartConfirmation = true
+                } label: {
+                    Label(
+                        viewModel.isStartingPlaylist ? "Démarrage..." : "Recommencer le cycle",
+                        systemImage: "arrow.counterclockwise"
+                    )
+                }
+                .disabled(!viewModel.canStartPlaylist)
+                .confirmationDialog(
+                    "Recommencer le cycle ?",
+                    isPresented: $showingRestartConfirmation,
+                    titleVisibility: .visible
+                ) {
+                    Button("Recommencer") {
+                        viewModel.startPlaylist()
+                    }
+                    Button("Annuler", role: .cancel) { }
+                } message: {
+                    Text("Toutes les photos seront de nouveau affichées une fois, dans un ordre aléatoire. Le Canvas est réveillé et la playlist reprend si elle était en pause.")
+                }
                 .disabled(!viewModel.canPausePlaylist && !viewModel.canResumePlaylist)
             } else {
                 Button {
