@@ -368,6 +368,8 @@ private struct CanvasBatteryWidgetView: View {
                                 batteryPercentageView(in: geometry)
                             }
                         }
+                        // The thumbnail takes what is left, never the battery's room.
+                        .layoutPriority(1)
 
                         if widgetFamily == .systemLarge {
                             VStack(alignment: .leading, spacing: 8) {
@@ -485,9 +487,13 @@ private struct CanvasBatteryWidgetView: View {
 
     private func batteryPercentageView(in geometry: GeometryProxy) -> some View {
         let fontSize: CGFloat
-        if widgetFamily == .systemSmall {
+        switch widgetFamily {
+        case .systemSmall:
             fontSize = geometry.size.height * 0.30
-        } else {
+        case .systemLarge:
+            // About the medium size: 40 % of a large widget's height would not fit.
+            fontSize = geometry.size.height * 0.15
+        default:
             fontSize = geometry.size.height * 0.40
         }
 
@@ -495,6 +501,8 @@ private struct CanvasBatteryWidgetView: View {
             if let percentage = entry.percentage {
                 Text("\(percentage)%")
                     .font(.system(size: fontSize, weight: .regular, design: .default))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
                     .foregroundStyle(.primary)
                     .widgetAccentable()
                     .padding(.top, widgetFamily == .systemSmall ? 5 : 10)
