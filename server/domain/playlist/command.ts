@@ -1,7 +1,7 @@
 import { match } from 'ts-pattern'
 import { CanvasCommand } from '~/domain/canvas/command'
 import type { CanvasUrl, ServerUrl } from '~/domain/config/types'
-import * as imageRepository from '~/domain/image/infrastructure/repository'
+import { ImageQuery } from '~/domain/image/query'
 import {
   applyQuietHours,
   pickNextImage,
@@ -23,7 +23,7 @@ export namespace PlaylistCommand {
     quietHours?: QuietHours,
     playlistId: PlaylistId = DEFAULT_PLAYLIST_ID,
   ) => {
-    const allImagesId = await imageRepository.findAllIds()
+    const allImagesId = await ImageQuery.findAllIds()
     if (allImagesId.length === 0) return 'playlist-empty' as const
     await playlistRepository.save({
       id: playlistId,
@@ -70,13 +70,13 @@ export namespace PlaylistCommand {
     const outcome = await match(status)
       .with('in-progress', async () => {
         const picked = pickNextImage({
-          allImagesId: await imageRepository.findAllIds(),
+          allImagesId: await ImageQuery.findAllIds(),
           shownImagesId,
           lastImageId,
         })
         if (!picked) return { kind: 'empty' as const }
         // Null only if the image was deleted between listing and reading.
-        const image = await imageRepository.findById(picked.nextImageId)
+        const image = await ImageQuery.findById(picked.nextImageId)
         if (!image) return { kind: 'empty' as const }
         return { kind: 'show' as const, image, shownImagesId: picked.shownImagesId }
       })
@@ -101,7 +101,7 @@ export namespace PlaylistCommand {
     const remaining = await playlistRepository.findLegacyRemainingImagesId(playlistId)
     const playlist = remaining && (await playlistRepository.findById(playlistId))
     if (!remaining || !playlist) return false
-    const allImagesId = await imageRepository.findAllIds()
+    const allImagesId = await ImageQuery.findAllIds()
     await playlistRepository.save({
       ...playlist,
       shownImagesId: shownFromRemaining(allImagesId, remaining),
