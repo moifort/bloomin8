@@ -184,13 +184,16 @@ struct ContentView: View {
                     }
                 }
 
+                // A state switch, not an action: on means the playlist is paused.
                 Toggle(isOn: pausePlaylistBinding) {
                     Label {
                         Text(pauseToggleLabel)
                     } icon: {
-                        Image(systemName: "pause.circle.fill")
+                        Image(systemName: viewModel.isPlaylistPaused ? "pause.circle.fill" : "pause.circle")
+                            .foregroundStyle(viewModel.isPlaylistPaused ? AnyShapeStyle(.orange) : AnyShapeStyle(Color.accentColor))
                     }
                 }
+                .tint(.orange)
                 .disabled(!viewModel.canPausePlaylist && !viewModel.canResumePlaylist)
             } else {
                 Button {
@@ -350,7 +353,7 @@ struct ContentView: View {
                 ? String(localized: "Reprise...")
                 : String(localized: "Mise en pause...")
         }
-        return String(localized: "Mettre en pause")
+        return String(localized: "En pause")
     }
 
     private var canvasSection: some View {
