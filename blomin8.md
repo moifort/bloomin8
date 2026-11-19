@@ -17,6 +17,7 @@ GET http://{device_ip}/upstream/pull_settings
 ```
 
 **Response Example:**
+
 ```json
 {
   "upstream_on": true,
@@ -28,14 +29,14 @@ GET http://{device_ip}/upstream/pull_settings
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `upstream_on` | Boolean | Whether scheduled pulling is enabled |
-| `upstream_url` | String | Upstream server address |
-| `token` | String | Access token |
+| Field            | Type    | Description                                             |
+| ---------------- | ------- | ------------------------------------------------------- |
+| `upstream_on`    | Boolean | Whether scheduled pulling is enabled                    |
+| `upstream_url`   | String  | Upstream server address                                 |
+| `token`          | String  | Access token                                            |
 | `next_cron_time` | Integer | Next wake time (Unix timestamp in seconds, 0 = not set) |
-| `pre_image` | String | Last displayed image URL |
-| `time` | Integer | Device current time (Unix timestamp in seconds) |
+| `pre_image`      | String  | Last displayed image URL                                |
+| `time`           | Integer | Device current time (Unix timestamp in seconds)         |
 
 ### 1.2 Update Configuration
 
@@ -53,16 +54,17 @@ Content-Type: application/json
 
 ### 1.3 Parameters
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `upstream_on` | Boolean | No | Enable/disable scheduled pulling. `false` stops scheduling |
-| `upstream_url` | String | No | Upstream server address (device will call `{upstream_url}/eink_pull`) |
-| `token` | String | No | Custom token, device includes in Header when calling upstream |
-| `cron_time` | String | No | Next pull time, **must be UTC ISO 8601 format**, e.g. `2025-11-01T08:30:00Z` |
+| Parameter      | Type    | Required | Description                                                                  |
+| -------------- | ------- | -------- | ---------------------------------------------------------------------------- |
+| `upstream_on`  | Boolean | No       | Enable/disable scheduled pulling. `false` stops scheduling                   |
+| `upstream_url` | String  | No       | Upstream server address (device will call `{upstream_url}/eink_pull`)        |
+| `token`        | String  | No       | Custom token, device includes in Header when calling upstream                |
+| `cron_time`    | String  | No       | Next pull time, **must be UTC ISO 8601 format**, e.g. `2025-11-01T08:30:00Z` |
 
 > **Note**: PUT uses ISO 8601 format for `cron_time` (e.g. `2025-11-01T08:30:00Z`), but GET returns `next_cron_time` as Unix timestamp (seconds).
 
 **Response:** Returns updated fields
+
 ```json
 {
   "upstream_on": true
@@ -78,6 +80,7 @@ When device wakes at `cron_time`, it calls the following endpoints on your serve
 ### 2.1 `/eink_pull` - Device Pulls Image
 
 **Device Request:**
+
 ```http
 GET {upstream_url}/eink_pull?device_id={device_id}&pull_id={uuid}&cron_time={iso_time}&battery={percent}
 X-Access-Token: {your-token}
@@ -85,12 +88,12 @@ X-Access-Token: {your-token}
 
 **Query Parameters:**
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `device_id` | String | Device unique identifier |
-| `pull_id` | String | Unique ID for this pull request (UUID) |
-| `cron_time` | String | Current scheduled time (ISO 8601 UTC) |
-| `battery` | Integer | Device battery percentage |
+| Parameter   | Type    | Description                            |
+| ----------- | ------- | -------------------------------------- |
+| `device_id` | String  | Device unique identifier               |
+| `pull_id`   | String  | Unique ID for this pull request (UUID) |
+| `cron_time` | String  | Current scheduled time (ISO 8601 UTC)  |
+| `battery`   | Integer | Device battery percentage              |
 
 **Your server should return:**
 
@@ -134,18 +137,19 @@ X-Access-Token: {your-token}
 
 **Key Fields:**
 
-| Field | Description |
-|-------|-------------|
-| `status` | 200=success, 204=no content |
-| `type` | `SHOW`=display image, `RECOVER`=restore default image |
+| Field            | Description                                                                               |
+| ---------------- | ----------------------------------------------------------------------------------------- |
+| `status`         | 200=success, 204=no content                                                               |
+| `type`           | `SHOW`=display image, `RECOVER`=restore default image                                     |
 | `next_cron_time` | Next pull time (UTC ISO 8601). Set to `null` or `1970-01-01T00:00:00Z` to stop scheduling |
-| `image_url` | Image URL, filename must end with `_P.jpg` or `_L.jpg` to specify orientation |
+| `image_url`      | Image URL, filename must end with `_P.jpg` or `_L.jpg` to specify orientation             |
 
 ### 2.2 `/eink_signal` - Device Feedback (Optional)
 
 Device calls this endpoint after displaying image to report result:
 
 **Device Request:**
+
 ```http
 GET {upstream_url}/eink_signal?pull_id={uuid}&success={0|1}
 X-Access-Token: {your-token}
@@ -153,12 +157,13 @@ X-Access-Token: {your-token}
 
 **Query Parameters:**
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `pull_id` | String | Corresponding pull_id from eink_pull |
-| `success` | Integer | 0=failed, 1=success |
+| Parameter | Type    | Description                          |
+| --------- | ------- | ------------------------------------ |
+| `pull_id` | String  | Corresponding pull_id from eink_pull |
+| `success` | Integer | 0=failed, 1=success                  |
 
 **Your server can return:**
+
 ```json
 {
   "status": 200,
@@ -211,6 +216,7 @@ sequenceDiagram
 ### Example 1: Pull image every 30 minutes
 
 **Initialize configuration:**
+
 ```http
 PUT http://192.168.1.100/upstream/pull_settings
 Content-Type: application/json
@@ -224,6 +230,7 @@ Content-Type: application/json
 ```
 
 **Server `/eink_pull` response logic:**
+
 ```python
 from datetime import datetime, timedelta
 
@@ -312,6 +319,7 @@ def eink_pull(request):
 ```
 
 **Key points:**
+
 - `status: 204` + fixed interval = polling mode (no image yet)
 - `status: 200` + exact time = precise scheduling (image ready at specific time)
 - Queue with `cron_time` as key enables time-sensitive image delivery
@@ -319,6 +327,7 @@ def eink_pull(request):
 ### Example 4: Stop scheduled pulling
 
 **Method 1: Via device endpoint**
+
 ```http
 PUT http://192.168.1.100/upstream/pull_settings
 Content-Type: application/json

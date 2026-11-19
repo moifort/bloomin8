@@ -5,6 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 Canvas is a full-stack image playlist manager for BLOOMIN8 Canvas e-ink display devices. The system consists of:
+
 - **Backend**: Nitro/TypeScript server exposing GraphQL (Apollo Server + Pothos) plus a thin REST surface for the device protocol and binary uploads
 - **iOS App**: SwiftUI app for uploading photos, controlling playlists, and watching device status (Apollo iOS)
 - **iOS Widget**: Lock screen widget displaying device battery status (Apollo iOS in the extension)
@@ -12,6 +13,7 @@ Canvas is a full-stack image playlist manager for BLOOMIN8 Canvas e-ink display 
 ## Backend Development
 
 ### Stack
+
 - Nitro (H3 web framework) + Bun runtime
 - TypeScript 5.5 with `strict: true`
 - Apollo Server 5.5 + Pothos 4.12 (code-first GraphQL)
@@ -80,6 +82,7 @@ server/
 ```
 
 **DDD rules:**
+
 - `repository.ts` is private to its domain; cross-domain reads go through public `XxxQuery` namespaces or via `read-model.ts` files (read-models can import sibling domain repositories — explicit cross-domain composition).
 - `business-rules.ts` is pure (no IO, no async) and 100% unit-tested.
 - Validation lives at the domain boundary via Zod constructors in `primitives.ts`. Once a value passes the constructor, downstream code trusts it.
@@ -103,6 +106,7 @@ server/
 ### Configuration
 
 `nitro.config.ts` runtime config:
+
 - `NITRO_SERVER_URL`: Public URL the device should call back (default: `http://192.168.1.199:3000`)
 
 The iOS app has its own default server URL (`http://192.168.1.199:3000` in `CanvasSettings.swift`, device `http://192.168.1.182`) — both point at whatever machine runs the server on your LAN and are editable in the app's settings screen.
@@ -128,6 +132,7 @@ The `canvas-battery` middleware captures `?battery=X` on `/eink_pull` and persis
 ## iOS Development
 
 ### Stack
+
 - Swift with SwiftUI, iOS 26+
 - MVVM with `@Observable`
 - UserDefaults + App Groups for app↔widget sharing (`group.polyforms.canvas`)
@@ -180,12 +185,15 @@ ios/
 ## Testing
 
 ### Backend
+
 - `bun test`: unit tests on `*.unit.test.ts` files (primitives + business-rules). 54 tests at the time of this writing.
 - `api.http`: ready-to-run REST + GraphQL request samples.
 - `bun run dev` + `curl` for end-to-end smoke testing.
 
 ### iOS
+
 Build and run in Xcode (or `xcodebuild` from CLI). Widget testing:
+
 1. Run the app on device/simulator
 2. Long-press home screen → add widget → select "Canvas Battery"
 3. Widget refreshes every 15 minutes automatically (and on app launch)
