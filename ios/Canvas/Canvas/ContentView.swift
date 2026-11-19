@@ -17,9 +17,9 @@ struct ContentView: View {
             }
             .onChange(of: scenePhase) { _, newPhase in
                 guard newPhase == .active else { return }
+                // Albums follow the library through PHPhotoLibraryChangeObserver.
                 Task {
                     await viewModel.refreshCanvasBattery()
-                    viewModel.reloadAlbums()
                 }
             }
             .alert("Erreur", isPresented: $showingError, presenting: viewModel.errorText) { _ in
@@ -86,14 +86,14 @@ struct ContentView: View {
             .animation(.snappy, value: toastMessage)
             .refreshable {
                 await viewModel.refreshCanvasBattery()
-                viewModel.reloadAlbums()
+                await viewModel.reloadAlbums()
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         Task {
                             await viewModel.refreshCanvasBattery()
-                            viewModel.reloadAlbums()
+                            await viewModel.reloadAlbums()
                         }
                     } label: {
                         Label("Actualiser", systemImage: "arrow.clockwise")
@@ -458,10 +458,8 @@ struct ContentView: View {
                 } else {
                     LabeledContent {
                         Picker("Album", selection: selectedAlbumBinding) {
-                            ForEach(viewModel.albums) { album in
-                                Text("\(album.title) (\(album.photoCount))")
-                                    .tag(Optional(album.id))
-                            }
+                            albumOptions(kind: .user, title: "Mes albums")
+                            albumOptions(kind: .smart, title: "Albums intelligents")
                         }
                         .labelsHidden()
                     } label: {
@@ -535,6 +533,19 @@ struct ContentView: View {
             }
         } header: {
             Text("Album")
+        }
+    }
+
+    @ViewBuilder
+    private func albumOptions(kind: PhotoAlbum.Kind, title: LocalizedStringKey) -> some View {
+        let albums = viewModel.albums.filter { $0.kind == kind }
+        if !albums.isEmpty {
+            Section(title) {
+                ForEach(albums) { album in
+                    Text("\(album.title) (\(album.photoCount))")
+                        .tag(Optional(album.id))
+                }
+            }
         }
     }
 

@@ -1,9 +1,17 @@
 import Foundation
 
 nonisolated struct PhotoAlbum: Identifiable, Hashable, Sendable {
+    enum Kind: Sendable {
+        /// Created by the user ("Mes albums" in Photos).
+        case user
+        /// Built by Photos (Favorites, Recents, Screenshots…).
+        case smart
+    }
+
     let id: String
     let title: String
     let photoCount: Int
+    let kind: Kind
 }
 
 struct UploadProgress: Sendable {

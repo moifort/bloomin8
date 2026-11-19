@@ -34,31 +34,32 @@ nonisolated enum PhotoLibraryService {
         }
     }
 
+    /// User albums first, then smart albums, each sorted by title. Counting
+    /// the photos of every album is slow on a big library: never call this
+    /// from the main actor.
     static func fetchAlbums() -> [PhotoAlbum] {
-        let collections = collectAlbumCollections()
-        var seen = Set<String>()
+        albums(of: .album, kind: .user) + albums(of: .smartAlbum, kind: .smart)
+    }
 
-        return collections.compactMap { collection in
-            guard !seen.contains(collection.localIdentifier) else {
-                return nil
-            }
+    private static func albums(of type: PHAssetCollectionType, kind: PhotoAlbum.Kind) -> [PhotoAlbum] {
+        let collections = PHAssetCollection.fetchAssetCollections(with: type, subtype: .any, options: nil)
+        var output: [PhotoAlbum] = []
+        output.reserveCapacity(collections.count)
 
+        collections.enumerateObjects { collection, _, _ in
             let photoCount = fetchPhotoCount(in: collection)
-            guard photoCount > 0 else {
-                return nil
-            }
+            guard photoCount > 0 else { return }
 
-            seen.insert(collection.localIdentifier)
             let title = collection.localizedTitle?.trimmingCharacters(in: .whitespacesAndNewlines)
-            let fallback = String(localized: "Album sans nom")
-
-            return PhotoAlbum(
+            output.append(PhotoAlbum(
                 id: collection.localIdentifier,
-                title: (title?.isEmpty == false ? title : nil) ?? fallback,
-                photoCount: photoCount
-            )
+                title: (title?.isEmpty == false ? title : nil) ?? String(localized: "Album sans nom"),
+                photoCount: photoCount,
+                kind: kind
+            ))
         }
-        .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+
+        return output.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
     }
 
     static func fetchPhotoAssets(in albumId: String) -> [PHAsset] {
@@ -141,22 +142,24 @@ nonisolated enum PhotoLibraryService {
         options.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.image.rawValue)
         return PHAsset.fetchAssets(in: collection, options: options).count
     }
+}
 
-    private static func collectAlbumCollections() -> [PHAssetCollection] {
-        let userAlbums = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: nil)
-        let smartAlbums = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: .any, options: nil)
+/// Calls `onChange` whenever the photo library changes (albums added, photos
+/// synced from iCloud…), on PhotoKit's background queue.
+nonisolated final class PhotoLibraryChangeObserver: NSObject, PHPhotoLibraryChangeObserver, Sendable {
+    private let onChange: @Sendable () -> Void
 
-        var output: [PHAssetCollection] = []
-        output.reserveCapacity(userAlbums.count + smartAlbums.count)
+    init(onChange: @escaping @Sendable () -> Void) {
+        self.onChange = onChange
+        super.init()
+        PHPhotoLibrary.shared().register(self)
+    }
 
-        userAlbums.enumerateObjects { collection, _, _ in
-            output.append(collection)
-        }
+    deinit {
+        PHPhotoLibrary.shared().unregisterChangeObserver(self)
+    }
 
-        smartAlbums.enumerateObjects { collection, _, _ in
-            output.append(collection)
-        }
-
-        return output
+    func photoLibraryDidChange(_ changeInstance: PHChange) {
+        onChange()
     }
 }

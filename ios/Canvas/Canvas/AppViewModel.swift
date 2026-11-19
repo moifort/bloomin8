@@ -94,6 +94,8 @@ final class AppViewModel {
     private var playlistPauseTask: Task<Void, Never>?
     private var playlistIntervalTask: Task<Void, Never>?
     private var quietHoursTask: Task<Void, Never>?
+    private var albumReloadTask: Task<Void, Never>?
+    private var photoLibraryObserver: PhotoLibraryChangeObserver?
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
@@ -182,7 +184,8 @@ final class AppViewModel {
             authorizationStatus = await PhotoLibraryService.requestAuthorization()
         }
         guard isPhotoAccessGranted else { return }
-        reloadAlbums()
+        startObservingPhotoLibrary()
+        await reloadAlbums()
     }
 
     func refreshCanvasBattery() async {
@@ -252,12 +255,15 @@ final class AppViewModel {
             }
 
             errorText = nil
-            reloadAlbums()
+            startObservingPhotoLibrary()
+            await reloadAlbums()
         }
     }
 
-    func reloadAlbums() {
-        let loadedAlbums = PhotoLibraryService.fetchAlbums()
+    /// Albums are listed off the main actor (counting photos is slow on a big
+    /// library) and reloaded only on a library change or a manual refresh.
+    func reloadAlbums() async {
+        let loadedAlbums = await Self.fetchAlbums()
         albums = loadedAlbums
 
         guard !loadedAlbums.isEmpty else {
@@ -270,6 +276,38 @@ final class AppViewModel {
         }
 
         selectedAlbumId = loadedAlbums.first?.id
+    }
+
+    @concurrent
+    private nonisolated static func fetchAlbums() async -> [PhotoAlbum] {
+        PhotoLibraryService.fetchAlbums()
+    }
+
+    private func startObservingPhotoLibrary() {
+        guard photoLibraryObserver == nil else { return }
+        // PhotoKit calls back on its own queue: hop to the main actor through
+        // a stream, which also collapses a burst into one pending change.
+        let (changes, continuation) = AsyncStream.makeStream(of: Void.self, bufferingPolicy: .bufferingNewest(1))
+        photoLibraryObserver = PhotoLibraryChangeObserver { continuation.yield() }
+        Task { [weak self] in
+            for await _ in changes {
+                guard let self else { return }
+                scheduleAlbumReload()
+            }
+        }
+    }
+
+    /// iCloud syncs arrive as bursts of changes: reload once they settle.
+    private func scheduleAlbumReload() {
+        albumReloadTask?.cancel()
+        albumReloadTask = Task {
+            do {
+                try await Task.sleep(for: .seconds(1))
+            } catch {
+                return
+            }
+            await reloadAlbums()
+        }
     }
 
     func startUpload() {
