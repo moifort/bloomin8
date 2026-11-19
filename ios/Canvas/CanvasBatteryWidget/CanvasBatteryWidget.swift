@@ -3,6 +3,7 @@ import ApolloAPI
 import CanvasGraphQL
 import CanvasShared
 import SwiftUI
+import UIKit
 import WidgetKit
 
 /// Widget refreshes run on a tight budget: a LAN server that does not answer
@@ -17,6 +18,8 @@ private struct CanvasBatteryEntry: TimelineEntry {
     let playlistDisplayed: Int?
     let playlistTotal: Int?
     var nextPullDate: Date? = nil
+    /// Thumbnail of the image on the Canvas, fetched for the large family only.
+    var currentImage: UIImage? = nil
 
     /// Same rule as the app: the device missed its scheduled wake-up by more
     /// than 30 minutes — likely out of battery or out of Wi-Fi range.
@@ -38,20 +41,25 @@ private struct CanvasBatteryProvider: TimelineProvider {
             return
         }
         Task {
-            completion(await buildEntry())
+            completion(await buildEntry(family: context.family))
         }
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<CanvasBatteryEntry>) -> Void) {
         Task {
-            let entry = await buildEntry()
+            let entry = await buildEntry(family: context.family)
             let refreshDate = Calendar.current.date(byAdding: .minute, value: 15, to: Date()) ?? Date().addingTimeInterval(900)
             completion(Timeline(entries: [entry], policy: .after(refreshDate)))
         }
     }
 
-    private func buildEntry() async -> CanvasBatteryEntry {
+    private func buildEntry(family: WidgetFamily) async -> CanvasBatteryEntry {
         let resolved = await resolveDeviceData()
+        // Only the large widget has room for the image on display.
+        var currentImage: UIImage?
+        if family == .systemLarge, let path = resolved.currentImagePath, let baseURL = validatedServerURL() {
+            currentImage = await fetchThumbnail(path: path, baseURL: baseURL)
+        }
         return CanvasBatteryEntry(
             date: Date(),
             percentage: resolved.percentage,
@@ -59,8 +67,22 @@ private struct CanvasBatteryProvider: TimelineProvider {
             lastPullDate: resolved.lastPullDate,
             playlistDisplayed: resolved.playlistDisplayed,
             playlistTotal: resolved.playlistTotal,
-            nextPullDate: resolved.nextPullDate
+            nextPullDate: resolved.nextPullDate,
+            currentImage: currentImage
         )
+    }
+
+    /// Downloads the JPEG on display and shrinks it: a widget has a tight
+    /// memory budget and the full 1200×1600 bitmap would waste most of it.
+    private func fetchThumbnail(path: String, baseURL: URL) async -> UIImage? {
+        guard let url = URL(string: path, relativeTo: baseURL) else { return nil }
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = widgetRequestTimeout
+        guard
+            let (data, response) = try? await URLSession(configuration: configuration).data(from: url),
+            (response as? HTTPURLResponse)?.statusCode == 200
+        else { return nil }
+        return await UIImage(data: data)?.byPreparingThumbnail(ofSize: CGSize(width: 360, height: 480))
     }
 
     private func resolveDeviceData() async -> (
@@ -69,7 +91,8 @@ private struct CanvasBatteryProvider: TimelineProvider {
         lastPullDate: Date?,
         playlistDisplayed: Int?,
         playlistTotal: Int?,
-        nextPullDate: Date?
+        nextPullDate: Date?,
+        currentImagePath: String?
     ) {
         let cachedPercentage = readCachedBatteryPercentage()
         let cachedChargeDate = readCachedLastFullChargeDate()
@@ -79,7 +102,7 @@ private struct CanvasBatteryProvider: TimelineProvider {
         let cachedNextPull = readCachedNextPullDate()
 
         guard let baseURL = validatedServerURL() else {
-            return (cachedPercentage, cachedChargeDate, cachedPullDate, cachedDisplayed, cachedTotal, cachedNextPull)
+            return (cachedPercentage, cachedChargeDate, cachedPullDate, cachedDisplayed, cachedTotal, cachedNextPull, nil)
         }
 
         let client = CanvasGraphQLClient.make(baseURL: baseURL, timeout: widgetRequestTimeout)
@@ -106,11 +129,13 @@ private struct CanvasBatteryProvider: TimelineProvider {
         let displayed: Int?
         let total: Int?
         let nextPull: Date?
+        var currentImagePath: String?
         switch playlistResult {
-        case let .some(.found(d, t, n)):
+        case let .some(.found(d, t, n, path)):
             displayed = d
             total = t
             nextPull = n
+            currentImagePath = path
             persistPlaylistProgress(displayed: d, total: t, nextPullDate: n)
         case .some(.notFound):
             displayed = nil
@@ -123,11 +148,11 @@ private struct CanvasBatteryProvider: TimelineProvider {
             nextPull = cachedNextPull
         }
 
-        return (percentage, chargeDate, pullDate, displayed, total, nextPull)
+        return (percentage, chargeDate, pullDate, displayed, total, nextPull, currentImagePath)
     }
 
     private enum PlaylistFetchResult {
-        case found(displayed: Int, total: Int, nextPullDate: Date?)
+        case found(displayed: Int, total: Int, nextPullDate: Date?, currentImagePath: String?)
         case notFound
     }
 
@@ -155,7 +180,8 @@ private struct CanvasBatteryProvider: TimelineProvider {
             return .found(
                 displayed: progress.displayed,
                 total: progress.total,
-                nextPullDate: progress.nextPullDate.flatMap(GraphQLDate.parse)
+                nextPullDate: progress.nextPullDate.flatMap(GraphQLDate.parse),
+                currentImagePath: progress.currentImagePath
             )
         } catch {
             return nil
@@ -282,7 +308,8 @@ private struct CanvasBatteryWidgetView: View {
 
     private var batteryRingColor: Color {
         guard let percentage = entry.percentage else {
-            return Color.white.opacity(0.20)
+            // Must stay visible on a light Home Screen too.
+            return Color.primary.opacity(0.2)
         }
 
         switch percentage {
@@ -306,6 +333,7 @@ private struct CanvasBatteryWidgetView: View {
             .containerBackground(for: .widget) {
                 Color.clear
             }
+            .widgetURL(URL(string: "bloomin8://status"))
         }
     }
 
@@ -342,8 +370,9 @@ private struct CanvasBatteryWidgetView: View {
                         }
 
                         if widgetFamily == .systemLarge {
-                            VStack(alignment: .leading, spacing: 0) {
+                            VStack(alignment: .leading, spacing: 8) {
                                 widgetTitleView
+                                currentImageView
                             }
                             .frame(maxHeight: .infinity, alignment: .top)
                         }
@@ -354,6 +383,19 @@ private struct CanvasBatteryWidgetView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var currentImageView: some View {
+        if let currentImage = entry.currentImage {
+            Image(uiImage: currentImage)
+                .resizable()
+                .widgetAccentedRenderingMode(.fullColor)
+                .aspectRatio(3 / 4, contentMode: .fit)
+                .clipShape(.rect(cornerRadius: 10))
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                .accessibilityLabel(String(localized: "Image affichée sur le Canvas"))
         }
     }
 
