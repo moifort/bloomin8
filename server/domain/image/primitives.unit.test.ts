@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import { ImageId, ImageOrientation, ImageRaw, ImageUrl, randomImageId } from './primitives'
+import {
+  ImageId,
+  ImageOrientation,
+  ImageRaw,
+  ImageUrl,
+  MAX_IMAGE_BYTES,
+  randomImageId,
+} from './primitives'
 
 describe('ImageId', () => {
   test('accepts a valid UUID', () => {
@@ -30,19 +37,36 @@ describe('ImageUrl', () => {
 })
 
 describe('ImageRaw', () => {
-  test('keeps a Buffer as-is', () => {
-    const bytes = Buffer.from('hello')
-    expect(ImageRaw(bytes)).toBe(bytes as never)
+  const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10])
+
+  test('keeps a JPEG Buffer as-is', () => {
+    expect(ImageRaw(jpeg)).toBe(jpeg as never)
   })
 
   test('decodes the legacy base64 string form', () => {
-    const legacy = Buffer.from('hello').toString('base64')
-    expect(ImageRaw(legacy).equals(Buffer.from('hello'))).toBe(true)
+    expect(ImageRaw(jpeg.toString('base64')).equals(jpeg)).toBe(true)
   })
 
   test('rejects empty input', () => {
     expect(() => ImageRaw('')).toThrow()
     expect(() => ImageRaw(Buffer.alloc(0))).toThrow()
+  })
+
+  test('rejects bytes that are not a JPEG', () => {
+    expect(() => ImageRaw(Buffer.from('hello'))).toThrow('Image must be a JPEG')
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a])
+    expect(() => ImageRaw(png)).toThrow('Image must be a JPEG')
+    expect(() => ImageRaw(Buffer.from('hello').toString('base64'))).toThrow()
+  })
+
+  test('accepts up to MAX_IMAGE_BYTES and rejects anything larger', () => {
+    const atLimit = Buffer.alloc(MAX_IMAGE_BYTES)
+    jpeg.copy(atLimit)
+    expect(ImageRaw(atLimit).length).toBe(MAX_IMAGE_BYTES)
+
+    const tooLarge = Buffer.alloc(MAX_IMAGE_BYTES + 1)
+    jpeg.copy(tooLarge)
+    expect(() => ImageRaw(tooLarge)).toThrow('Image must not exceed 10 MB')
   })
 })
 
