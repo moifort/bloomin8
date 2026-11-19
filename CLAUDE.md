@@ -109,7 +109,7 @@ server/
 
 - `NITRO_SERVER_URL`: Public URL the device should call back (default: `http://192.168.1.199:3000`)
 
-The iOS app has its own default server URL (`http://192.168.1.199:3000` in `CanvasSettings.swift`, device `http://192.168.1.182`) — both point at whatever machine runs the server on your LAN and are editable in the app's settings screen.
+The iOS app has its own default server URL (`http://canvas.local:3000` in `CanvasShared/…/CanvasSettings.swift`, device `http://192.168.1.182`) — both point at whatever machine runs the server on your LAN and are editable in the app's settings screen.
 
 ### BLOOMIN8 Device Protocol (REST, unchanged)
 
@@ -151,8 +151,7 @@ ios/
     │   │   ├── Images/GraphQL/               # KeepOnlyImages, DeleteImages
     │   │   ├── Canvas/GraphQL/               # CanvasBattery
     │   │   └── System/GraphQL/               # Health (settings "test connection")
-    │   ├── Shared/GraphQLClient.swift        # ApolloClient factory + async bridges
-    │   ├── Shared/CanvasSettings.swift       # URL defaults, validation, App Group sync
+    │   ├── Shared/GraphQLClient.swift        # 15 s client + async bridges + error mapping
     │   ├── PlaylistService.swift             # Wraps Start/Pause/Resume/Progress/QuietHours
     │   ├── ImageService.swift                # Wraps KeepOnlyImages / DeleteImages
     │   ├── CanvasStatusService.swift         # Wraps CanvasBattery query
@@ -162,6 +161,9 @@ ios/
     ├── CanvasBatteryWidget/
     │   ├── GraphQL/CanvasBatteryWidget.graphql
     │   └── CanvasBatteryWidget.swift         # TimelineProvider via Apollo
+    ├── CanvasShared/                         # Local SPM package used by app + widget:
+    │                                         #   CanvasSettings, CanvasCacheKeys, GraphQLDate,
+    │                                         #   CanvasGraphQLClient.make(baseURL:timeout:)
     └── CanvasGraphQL/                        # Local SPM package emitted by apollo-ios-cli
         ├── Package.swift
         └── Sources/                          # Generated types — both targets import this
@@ -172,8 +174,9 @@ ios/
 - **AppViewModel.swift**: single source of truth, manages upload queue (max 5 concurrent), drives the GraphQL services. Keeps original public API; only the underlying transport changed.
 - **GraphQLClient.swift**: `client(for: URL)` factory; `fetchAsync` / `performAsync` extensions bridge Apollo's callback API to async/await. No auth interceptor — bloomin8 runs on a trusted local network.
 - **SettingsView.swift**: in-app editor for the server/device URLs with validation and a "test connection" action (GraphQL `health` query). Replaced the old Settings.bundle; `CanvasSettings.syncToAppGroup()` keeps the widget in sync.
-- **Widget**: timeline provider hits `/graphql` directly via a private inlined `WidgetGraphQLClient` (the widget extension can't import sibling Canvas-target files but does share `CanvasGraphQL` SPM package). `CanvasWidgetStore` duplicates the shared UserDefaults keys for the same reason.
-- **Custom scalars** are typealiased to `String` by default. Numeric scalars (Hour, Percentage) are converted at the service boundary via `Int(scalar)`.
+- **Widget**: timeline provider hits `/graphql` with `CanvasGraphQLClient.make(…, timeout: 8)` and caches the status in the App Group under `CanvasCacheKeys` (the app writes the same keys). The large family also shows a thumbnail of the image on display. Code both targets need goes into the `CanvasShared` package: the widget cannot see the app target's files.
+- **Custom scalars** are typealiased to `String` by default; `Hour` and `Percentage` are declared `Int` in `CanvasGraphQL/Sources/Schema/CustomScalars/` (hand-edited, kept by codegen) since the server sends JSON numbers.
+- **Concurrency**: the app target defaults to `MainActor` isolation. Photo work (`ImageProcessor`, `PhotoLibraryService`, `UploadService`) is `nonisolated` and run from `@concurrent` helpers so it never blocks the UI.
 
 ### Codegen Workflow
 
@@ -186,7 +189,7 @@ ios/
 
 ### Backend
 
-- `bun test`: unit tests on `*.unit.test.ts` files (primitives + business-rules) and integration tests on `*.integration.test.ts` files (domain commands against an in-memory `useStorage`, see `server/testing/memory-storage.ts`). 82 tests at the time of this writing.
+- `bun test`: unit tests on `*.unit.test.ts` files (primitives + business-rules) and integration tests on `*.integration.test.ts` files (domain commands against an in-memory `useStorage`, see `server/testing/memory-storage.ts`). 84 tests at the time of this writing.
 - `api.http`: ready-to-run REST + GraphQL request samples.
 - `bun run dev` + `curl` for end-to-end smoke testing.
 
