@@ -88,6 +88,12 @@ struct PlaylistService {
         return String(localized: "Intervalle mis à jour")
     }
 
+    /// Points the existing playlist at the Canvas' new address for its next wake-ups.
+    func updateCanvasURL(_ canvasURL: URL) async throws {
+        let mutation = CanvasGraphQL.UpdateCanvasUrlMutation(canvasUrl: canvasURL.absoluteString)
+        _ = try await GraphQLClient.client(for: baseURL).performAsync(mutation)
+    }
+
     func updateQuietHours(_ quietHours: QuietHoursPayload) async throws -> String {
         let mutation = CanvasGraphQL.UpdateQuietHoursMutation(input: quietHoursInput(quietHours))
         _ = try await GraphQLClient.client(for: baseURL).performAsync(mutation)

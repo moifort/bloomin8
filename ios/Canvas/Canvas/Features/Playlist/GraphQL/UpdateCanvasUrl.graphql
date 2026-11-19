@@ -1,0 +1,3 @@
+mutation UpdateCanvasUrl($canvasUrl: CanvasUrl!) {
+  updateCanvasUrl(canvasUrl: $canvasUrl)
+}

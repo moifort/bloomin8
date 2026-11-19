@@ -253,7 +253,7 @@ struct ContentView: View {
             }
 
             NavigationLink {
-                SettingsView(isDeviceURLLocked: viewModel.playlistProgress != nil) {
+                SettingsView(hasPlaylist: viewModel.playlistProgress != nil) {
                     Task {
                         await viewModel.refreshCanvasBattery()
                     }
