@@ -61,15 +61,15 @@ A ready-to-use CasaOS configuration is available in `docker-compose.casaos.yml`.
 
 ### iOS App
 
-Build and install the iOS app from `ios/Canvas/` using Xcode. On first launch, open the in-app settings screen ("Modifier les réglages") to point the server URL at your Canvas server (e.g. `http://192.168.1.199:3000`) — a "test connection" button checks it is reachable.
+Build and install the iOS app from `ios/Canvas/` using Xcode. On first launch, open the in-app settings screen ("Modifier les réglages") to point the server URL at your Canvas server (`http://canvas.local:3000` by default) — a "test connection" button checks it is reachable.
 
-![iOS App](ios.PNG)
+![iOS App](docs/ios.PNG)
 
 ### iOS Widget
 
 After installing the app, add the **Canvas Battery** widget to your lock screen or home screen. It refreshes every 15 minutes and displays the current battery percentage of your e-ink display.
 
-![iOS Widget](ios-widget.PNG)
+![iOS Widget](docs/ios-widget.PNG)
 
 ## Docker Hub
 
