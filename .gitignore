@@ -34,3 +34,7 @@ DerivedData/
 
 # apollo-ios-cli downloaded by ios/scripts/apollo-codegen.sh
 /ios/.tools/
+
+# IDE and agent tool state
+.idea/
+.codex/

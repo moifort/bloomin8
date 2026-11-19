@@ -1,5 +1,5 @@
 {
-  "name": "nitro-app",
+  "name": "bloomin8-server",
   "private": true,
   "scripts": {
     "build": "nitro build",

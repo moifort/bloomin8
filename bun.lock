@@ -3,7 +3,7 @@
   "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "nitro-app",
+      "name": "bloomin8-server",
       "dependencies": {
         "@apollo/server": "5.5.2",
         "@pothos/core": "4.12.0",

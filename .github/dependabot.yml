@@ -1,0 +1,16 @@
+version: 2
+updates:
+  # Server dependencies (bun.lock): Dependabot's npm ecosystem understands it.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      # One PR for every non-major bump, separate PRs for majors.
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
