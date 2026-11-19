@@ -28,3 +28,6 @@ DerivedData/
 
 # Claude Code plan drafts
 .claude/plans/
+
+# Xcode builds from worktrees (fixed -derivedDataPath)
+/build/

@@ -1,6 +1,9 @@
 export default defineNitroConfig({
   compatibilityDate: '2026-02-06',
   srcDir: 'server',
+  // Single-package repo: without this, Nitro walks up to the nearest git root
+  // and, inside a git worktree, resolves h3 & co. from the parent checkout.
+  workspaceDir: '.',
   rollupConfig: {
     treeshake: {
       moduleSideEffects: (id) => id.includes('/graphql/') || id.includes('node_modules'),
