@@ -83,11 +83,11 @@ Content-Type: application/json
 
 { "query": "mutation { updatePlaylistInterval(cronIntervalInHours: \"6\") }" }
 
-### Delete all images
+### Delete given images (rollback of a cancelled upload)
 POST {{base}}/graphql
 Content-Type: application/json
 
-{ "query": "mutation { deleteAllImages }" }
+{ "query": "mutation { deleteImages(ids: [\"00000000-0000-4000-8000-000000000000\"]) }" }
 
 //***********************************************************//
 //********************* Device-side admin *******************//

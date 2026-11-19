@@ -2,6 +2,13 @@ import { consola } from 'consola'
 
 const log = consola.withTag('http')
 
+declare module 'h3' {
+  interface H3EventContext {
+    // performance.now() when the request came in, for the duration log line.
+    startedAt?: number
+  }
+}
+
 // One line per request. Bodies are not logged: image responses are megabytes
 // of binary and GraphQL errors are already reported by the /graphql route.
 export default defineNitroPlugin((nitroApp) => {

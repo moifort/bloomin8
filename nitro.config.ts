@@ -30,11 +30,4 @@ export default defineNitroConfig({
       base: './data/canvas',
     },
   },
-  routeRules: {
-    '/images/**': {
-      headers: {
-        'cache-control': 'public, max-age=31536000, immutable',
-      },
-    },
-  },
 })

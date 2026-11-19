@@ -21,12 +21,6 @@ export namespace ImageCommand {
     return image
   }
 
-  export const deleteAll = async () => {
-    const ids = await imageRepository.findAllIds()
-    await Promise.all(ids.map((id) => imageRepository.remove(id)))
-    return ids.length
-  }
-
   // Album replacement, step 2: the app uploads the new album first (the device
   // keeps showing the old one meanwhile), then drops everything else.
   export const keepOnly = async (keepImagesId: ImageId[]) => {

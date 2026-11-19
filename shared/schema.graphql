@@ -26,9 +26,6 @@ scalar Hour
 scalar ImageId
 
 type Mutation {
-  """Delete every uploaded image. Returns the count of deleted entries."""
-  deleteAllImages: Int!
-
   """
   Delete the given images — used to roll back a cancelled upload. Unknown ids are ignored. Returns the count of deleted images.
   """
