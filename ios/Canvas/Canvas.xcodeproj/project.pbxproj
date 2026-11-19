@@ -375,7 +375,7 @@
 				DEVELOPMENT_TEAM = 46C337T7YN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads = YES;
+				INFOPLIST_FILE = "Canvas-Info.plist";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "L'application a besoin d'acceder a tes albums pour convertir et envoyer les photos.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -417,7 +417,7 @@
 				DEVELOPMENT_TEAM = 46C337T7YN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads = YES;
+				INFOPLIST_FILE = "Canvas-Info.plist";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "L'application a besoin d'acceder a tes albums pour convertir et envoyer les photos.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
