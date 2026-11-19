@@ -12,9 +12,9 @@
 ### Healthcheck
 GET {{base}}/health
 
-### POST upload image (raw JPEG bytes — REST is the right tool here)
+### POST upload image (raw JPEG bytes, 10 MB max — anything else is a 400)
 POST {{base}}/upload?orientation=P
-Content-Type: application/octet-stream
+Content-Type: image/jpeg
 
 < ./images/IMG_3187.jpeg
 
@@ -49,18 +49,19 @@ Content-Type: application/json
 POST {{base}}/graphql
 Content-Type: application/json
 
-{ "query": "{ playlistProgress { displayed total status cronIntervalInHours } }" }
+{ "query": "{ playlistProgress { displayed total status cronIntervalInHours nextPullDate currentImagePath } }" }
 
 ### Start playlist
 POST {{base}}/graphql
 Content-Type: application/json
 
 {
-  "query": "mutation Start($input: StartPlaylistInput!) { startPlaylist(input: $input) }",
+  "query": "mutation Start($input: StartPlaylistInput!) { startPlaylist(input: $input) { playlistId wokeUp } }",
   "variables": {
     "input": {
       "canvasUrl": "{{canvas}}",
-      "cronIntervalInHours": "3"
+      "cronIntervalInHours": 3,
+      "quietHours": { "enabled": true, "timezone": "Europe/Paris", "start": 23, "end": 7 }
     }
   }
 }
@@ -81,7 +82,28 @@ Content-Type: application/json
 POST {{base}}/graphql
 Content-Type: application/json
 
-{ "query": "mutation { updatePlaylistInterval(cronIntervalInHours: \"6\") }" }
+{ "query": "mutation { updatePlaylistInterval(cronIntervalInHours: 6) }" }
+
+### Update quiet hours
+POST {{base}}/graphql
+Content-Type: application/json
+
+{ "query": "mutation { updateQuietHours(input: { enabled: true, timezone: \"Europe/Paris\", start: 23, end: 7 }) }" }
+
+### Update the Canvas address of the playlist
+POST {{base}}/graphql
+Content-Type: application/json
+
+{
+  "query": "mutation UpdateCanvasUrl($canvasUrl: CanvasUrl!) { updateCanvasUrl(canvasUrl: $canvasUrl) }",
+  "variables": { "canvasUrl": "{{canvas}}" }
+}
+
+### Keep only the given images (end of an album replacement)
+POST {{base}}/graphql
+Content-Type: application/json
+
+{ "query": "mutation { keepOnlyImages(ids: [\"00000000-0000-4000-8000-000000000000\"]) }" }
 
 ### Delete given images (rollback of a cancelled upload)
 POST {{base}}/graphql
