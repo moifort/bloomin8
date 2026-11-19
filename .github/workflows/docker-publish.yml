@@ -4,13 +4,41 @@ on:
   push:
     branches:
       - main
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  # Lint, type-check and test before anything is published: `latest` is what CasaOS pulls.
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint and format
+        run: bunx biome check
+
+      - name: Type-check
+        run: bunx nitro prepare && bunx tsc --noEmit
+
+      - name: Test
+        run: bun test
+
   docker:
+    needs: check
+    # Pull requests are only checked, never published.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
