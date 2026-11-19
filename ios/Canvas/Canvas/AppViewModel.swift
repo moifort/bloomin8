@@ -54,6 +54,7 @@ final class AppViewModel {
     private(set) var isServerReachable = true
     private(set) var isRefreshingStatus = false
     private(set) var lastUploadOutcome: UploadOutcome?
+    private(set) var pendingPartialUpload: PartialUpload?
     private(set) var uploadCompletionCount = 0
     // Bumped after each successful playlist action (start/pause/resume) so the
     // view can emit a single haptic per action.
@@ -131,6 +132,7 @@ final class AppViewModel {
 
     var canStartUpload: Bool {
         isPhotoAccessGranted && selectedAlbumId != nil && !isUploading && !isStartingPlaylist
+            && pendingPartialUpload == nil
     }
 
     var canStartPlaylist: Bool {
@@ -422,56 +424,21 @@ final class AppViewModel {
 
         statusText = String(localized: "Upload en cours...")
         let uploader = UploadService(baseURL: baseURL)
+        let imageService = ImageService(baseURL: baseURL)
         progress = UploadProgress(total: assets.count, processed: 0, uploaded: 0, failed: 0)
 
-        let concurrencyLimit = min(maxConcurrentUploads, assets.count)
-        var nextAssetIndex = 0
-        var uploadedIDs: [String] = []
+        var batch = await uploadBatch(assets, uploader: uploader, isRetry: false)
+        var uploadedIDs = batch.uploadedIDs
 
-        await withTaskGroup(of: UploadItemResult.self) { group in
-            while nextAssetIndex < concurrencyLimit {
-                let asset = assets[nextAssetIndex]
-                nextAssetIndex += 1
-                group.addTask {
-                    await AppViewModel.uploadAsset(asset, uploader: uploader)
-                }
-            }
-
-            while let itemResult = await group.next() {
-                if Task.isCancelled {
-                    group.cancelAll()
-                    statusText = String(localized: "Upload annulé.")
-                    return
-                }
-
-                switch itemResult {
-                case let .uploaded(id):
-                    progress.uploaded += 1
-                    uploadedIDs.append(id)
-                case .failed:
-                    progress.failed += 1
-                case .cancelled:
-                    break
-                }
-
-                progress.processed += 1
-                statusText = String(localized: "Upload \(progress.processed)/\(progress.total)")
-
-                if nextAssetIndex < assets.count {
-                    let asset = assets[nextAssetIndex]
-                    nextAssetIndex += 1
-                    group.addTask {
-                        await AppViewModel.uploadAsset(asset, uploader: uploader)
-                    }
-                }
-            }
+        // A photo can fail on a transient error (iCloud download, Wi-Fi hiccup):
+        // give the failed ones one more chance before asking anything.
+        if !batch.isCancelled, !batch.failedAssets.isEmpty {
+            statusText = String(localized: "Nouvel essai pour \(batch.failedAssets.count) photos...")
+            batch = await uploadBatch(batch.failedAssets, uploader: uploader, isRetry: true)
+            uploadedIDs += batch.uploadedIDs
         }
 
-        // The old album stayed on the Canvas during the upload; it is only
-        // replaced once the new photos are on the server.
-        let imageService = ImageService(baseURL: baseURL)
-
-        if Task.isCancelled {
+        if batch.isCancelled || Task.isCancelled {
             // Roll back so the old album stays exactly as it was. Apollo calls are
             // not cancellation-aware, so this still runs on a cancelled task.
             if !uploadedIDs.isEmpty {
@@ -482,21 +449,135 @@ final class AppViewModel {
         }
 
         // Nothing reached the server: keep the current album untouched.
-        if !uploadedIDs.isEmpty {
-            statusText = String(localized: "Suppression des photos serveur...")
-            do {
-                try await imageService.keepOnly(ids: uploadedIDs)
-            } catch {
-                errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
-                lastUploadOutcome = .failure
-                uploadCompletionCount += 1
-                return
+        guard !uploadedIDs.isEmpty else {
+            statusText = String(localized: "Aucune photo n'a pu être envoyée.")
+            lastUploadOutcome = .failure
+            uploadCompletionCount += 1
+            return
+        }
+
+        // Some photos are still missing: replacing the album with a subset is
+        // the user's call, not a silent default.
+        if !batch.failedAssets.isEmpty {
+            pendingPartialUpload = PartialUpload(
+                uploadedIDs: uploadedIDs,
+                failedCount: batch.failedAssets.count,
+                baseURL: baseURL
+            )
+            statusText = String(localized: "\(batch.failedAssets.count) photos n'ont pas pu être envoyées.")
+            return
+        }
+
+        await replaceAlbum(keeping: uploadedIDs, baseURL: baseURL)
+    }
+
+    /// Photos uploaded while others kept failing, waiting for the user to
+    /// replace the album with them or to roll them back.
+    struct PartialUpload {
+        let uploadedIDs: [String]
+        let failedCount: Int
+        let baseURL: URL
+
+        var uploadedCount: Int { uploadedIDs.count }
+    }
+
+    func confirmPartialUpload() {
+        guard let pending = pendingPartialUpload else { return }
+        pendingPartialUpload = nil
+        uploadTask = Task {
+            isUploading = true
+            defer {
+                isUploading = false
+                uploadTask = nil
+            }
+            await replaceAlbum(keeping: pending.uploadedIDs, baseURL: pending.baseURL)
+        }
+    }
+
+    func cancelPartialUpload() {
+        guard let pending = pendingPartialUpload else { return }
+        pendingPartialUpload = nil
+        Task {
+            try? await ImageService(baseURL: pending.baseURL).delete(ids: pending.uploadedIDs)
+            statusText = String(localized: "Upload annulé.")
+        }
+    }
+
+    /// The old album stayed on the Canvas during the upload; it is only
+    /// replaced once the new photos are on the server.
+    private func replaceAlbum(keeping uploadedIDs: [String], baseURL: URL) async {
+        statusText = String(localized: "Suppression des photos serveur...")
+        do {
+            try await ImageService(baseURL: baseURL).keepOnly(ids: uploadedIDs)
+        } catch {
+            errorText = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            lastUploadOutcome = .failure
+            uploadCompletionCount += 1
+            return
+        }
+
+        statusText = String(localized: "Terminé : \(uploadedIDs.count) photos envoyées.")
+        lastUploadOutcome = progress.failed > 0 ? .failure : .success
+        uploadCompletionCount += 1
+    }
+
+    private struct BatchResult {
+        var uploadedIDs: [String] = []
+        var failedAssets: [PHAsset] = []
+        var isCancelled = false
+    }
+
+    /// Uploads `assets` with at most `maxConcurrentUploads` in flight. On a
+    /// retry, the photos were already counted as processed and failed: a
+    /// success only moves one from failed to uploaded.
+    private func uploadBatch(_ assets: [PHAsset], uploader: UploadService, isRetry: Bool) async -> BatchResult {
+        var result = BatchResult()
+        var nextAssetIndex = 0
+
+        await withTaskGroup(of: (Int, UploadItemResult).self) { group in
+            func enqueueNext() {
+                guard nextAssetIndex < assets.count else { return }
+                let index = nextAssetIndex
+                let asset = assets[index]
+                nextAssetIndex += 1
+                group.addTask {
+                    (index, await AppViewModel.uploadAsset(asset, uploader: uploader))
+                }
+            }
+
+            for _ in 0 ..< min(maxConcurrentUploads, assets.count) {
+                enqueueNext()
+            }
+
+            while let (index, itemResult) = await group.next() {
+                if Task.isCancelled {
+                    group.cancelAll()
+                    result.isCancelled = true
+                    return
+                }
+
+                switch itemResult {
+                case let .uploaded(id):
+                    result.uploadedIDs.append(id)
+                    progress.uploaded += 1
+                    if isRetry { progress.failed -= 1 }
+                case .failed:
+                    result.failedAssets.append(assets[index])
+                    if !isRetry { progress.failed += 1 }
+                case .cancelled:
+                    result.isCancelled = true
+                }
+
+                if !isRetry {
+                    progress.processed += 1
+                    statusText = String(localized: "Upload \(progress.processed)/\(progress.total)")
+                }
+
+                enqueueNext()
             }
         }
 
-        statusText = String(localized: "Terminé : \(progress.uploaded) envoyées, \(progress.failed) échecs.")
-        lastUploadOutcome = progress.failed > 0 ? .failure : .success
-        uploadCompletionCount += 1
+        return result
     }
 
     @concurrent

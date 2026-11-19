@@ -31,11 +31,39 @@ struct ContentView: View {
             .onChange(of: viewModel.errorText) { _, newError in
                 showingError = newError != nil
             }
+            .confirmationDialog(
+                partialUploadTitle,
+                isPresented: isShowingPartialUpload,
+                titleVisibility: .visible,
+                presenting: viewModel.pendingPartialUpload
+            ) { pending in
+                Button("Remplacer avec \(pending.uploadedCount) photos", role: .destructive) {
+                    viewModel.confirmPartialUpload()
+                }
+                Button("Annuler", role: .cancel) {
+                    viewModel.cancelPartialUpload()
+                }
+            } message: { _ in
+                Text("Le Canvas garde ses photos actuelles tant que vous ne remplacez pas l'album. Annuler supprime les photos déjà envoyées.")
+            }
             .modifier(StatusToastBehavior(viewModel: viewModel, toastMessage: $toastMessage))
             .sensoryFeedback(trigger: viewModel.uploadCompletionCount) { _, _ in
                 viewModel.lastUploadOutcome == .failure ? .error : .success
             }
             .sensoryFeedback(.success, trigger: viewModel.playlistActionCount)
+    }
+
+    private var isShowingPartialUpload: Binding<Bool> {
+        Binding(
+            get: { viewModel.pendingPartialUpload != nil },
+            // A dismissal without a choice runs the cancel button's action.
+            set: { _ in }
+        )
+    }
+
+    private var partialUploadTitle: String {
+        let failed = viewModel.pendingPartialUpload?.failedCount ?? 0
+        return String(localized: "\(failed) photos n'ont pas pu être envoyées")
     }
 
     private var mainContent: some View {
