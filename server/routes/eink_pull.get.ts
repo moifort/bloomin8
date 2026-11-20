@@ -2,8 +2,11 @@ import { CanvasCommand } from '~/domain/canvas/command'
 import { config } from '~/domain/config'
 import { PlaylistCommand } from '~/domain/playlist/command'
 
-export default defineEventHandler(async () => {
+export default defineEventHandler(async (event) => {
   const { serverUrl } = config()
+  // Which address the device used: compared with serverUrl at /eink_signal.
+  const host = getRequestHost(event)
+  if (host) await CanvasCommand.recordPulledVia(host)
   const result = await PlaylistCommand.nextImage()
   if (result === 'playlist-not-found') return CanvasCommand.stopPullingResponse()
   if (result.kind === 'show') {

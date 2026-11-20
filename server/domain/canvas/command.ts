@@ -1,4 +1,4 @@
-import { batteryUpdate } from '~/domain/canvas/business-rules'
+import { batteryUpdate, isUpstreamOutdated } from '~/domain/canvas/business-rules'
 import * as canvasRepository from '~/domain/canvas/infrastructure/repository'
 import { CanvasDate } from '~/domain/canvas/primitives'
 import type { Percentage } from '~/domain/canvas/types'
@@ -10,7 +10,9 @@ import type { ImageUrl } from '~/domain/image/types'
 const WAKE_UP_TIMEOUT_MS = 5_000
 
 export namespace CanvasCommand {
-  export const wakeUp = async (canvasUrl: CanvasUrl, serverUrl: ServerUrl) => {
+  // Points the device at the server and sets its next pull time. The device
+  // only answers while awake (on a manual wake-up, or during its own pull).
+  const configureUpstream = async (canvasUrl: CanvasUrl, serverUrl: ServerUrl, cronTime: Date) => {
     const response = await fetch(`${canvasUrl}/upstream/pull_settings`, {
       method: 'PUT',
       signal: AbortSignal.timeout(WAKE_UP_TIMEOUT_MS),
@@ -19,10 +21,30 @@ export namespace CanvasCommand {
         upstream_on: true,
         upstream_url: serverUrl,
         token: null,
-        cron_time: CanvasDate(new Date()),
+        cron_time: CanvasDate(cronTime),
       }),
     })
     if (!response.ok) throw new Error(`Failed to configure canvas, ${await response.text()}`)
+  }
+
+  export const wakeUp = (canvasUrl: CanvasUrl, serverUrl: ServerUrl) =>
+    configureUpstream(canvasUrl, serverUrl, new Date())
+
+  export const recordPulledVia = (host: string) => canvasRepository.savePulledVia(host)
+
+  // Called while the device is still awake after a pull (its /eink_signal): if it
+  // pulled through an outdated address, give it the configured server URL, keeping
+  // the next pull time already scheduled so no extra pull happens.
+  export const repointUpstreamIfOutdated = async (
+    canvasUrl: CanvasUrl,
+    serverUrl: ServerUrl,
+    nextPullAt: Date,
+  ) => {
+    const pulledVia = await canvasRepository.findPulledVia()
+    if (!isUpstreamOutdated({ pulledVia, serverUrl })) return 'up-to-date' as const
+    await configureUpstream(canvasUrl, serverUrl, nextPullAt)
+    await canvasRepository.savePulledVia(new URL(serverUrl).host)
+    return { repointedFrom: pulledVia, to: serverUrl }
   }
 
   export const saveBattery = async (level: Percentage) => {

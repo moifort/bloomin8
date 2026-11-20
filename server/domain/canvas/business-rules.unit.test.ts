@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { batteryUpdate } from './business-rules'
+import { ServerUrl } from '~/domain/config/primitives'
+import { batteryUpdate, isUpstreamOutdated } from './business-rules'
 import { Percentage } from './primitives'
 
 describe('batteryUpdate', () => {
@@ -55,5 +56,21 @@ describe('batteryUpdate', () => {
       now: new Date('2026-01-01T12:00:00Z'),
     })
     expect(result.lastFullChargeDate).toEqual(fullChargedAt)
+  })
+})
+
+describe('isUpstreamOutdated', () => {
+  const serverUrl = ServerUrl('http://canvas.local:3000')
+
+  test('is outdated when the device pulled through another address', () => {
+    expect(isUpstreamOutdated({ pulledVia: '192.168.1.199:3000', serverUrl })).toBe(true)
+  })
+
+  test('is up to date when the device pulled through the server URL', () => {
+    expect(isUpstreamOutdated({ pulledVia: 'Canvas.local:3000', serverUrl })).toBe(false)
+  })
+
+  test('is up to date when no pull was recorded yet', () => {
+    expect(isUpstreamOutdated({ pulledVia: null, serverUrl })).toBe(false)
   })
 })

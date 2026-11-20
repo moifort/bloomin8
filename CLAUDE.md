@@ -117,6 +117,7 @@ The iOS app has its own default server URL (`http://canvas.local:3000` in `Canva
 2. Device pulls `GET {serverUrl}/eink_pull?device_id&pull_id&cron_time&battery`.
 3. Server responds with `image_url` and `next_cron_time` (ISO 8601 UTC, no milliseconds).
 4. Device displays the JPEG (rotated 90° CCW for `_L.jpg`) and may call `GET {serverUrl}/eink_signal?pull_id&success` (acknowledged and logged, intentionally not persisted).
+   While the device is still awake there, if its last `/eink_pull` came through another host than `NITRO_SERVER_URL` (old server, relay), the server repoints it once: `PUT /upstream/pull_settings` with the configured URL and the `next_cron_time` already given (`CanvasCommand.repointUpstreamIfOutdated`). The pulled-via host is stored in the `canvas` bucket (`pulledVia`).
 5. Device sleeps until `next_cron_time`. A paused playlist defers the next pull by the configured `cronIntervalInHours`.
 
 The `canvas-battery` middleware captures `?battery=X` on `/eink_pull` and persists it to the `canvas` bucket.
